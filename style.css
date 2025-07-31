@@ -1,0 +1,437 @@
+/* Importação das fontes já está no HTML, mas aqui garantimos o uso */
+/* Fontes: 'Inter' para corpo de texto, 'Poppins' para títulos */
+:root {
+    --primary-color: #007bff; /* Azul vibrante */
+    --secondary-color: #6c757d; /* Cinza médio */
+    --success-color: #28a745; /* Verde */
+    --info-color: #17a2b8; /* Azul claro */
+    --warning-color: #ffc107; /* Amarelo */
+    --danger-color: #dc3545; /* Vermelho */
+    --light-bg: #f8f9fa; /* Fundo claro */
+    --dark-bg: #343a40; /* Fundo escuro para cabeçalho/rodapé */
+    --card-bg: #ffffff; /* Fundo dos cards */
+    --border-color: #e0e0e0; /* Cor da borda */
+    --text-color: #333; /* Cor do texto principal */
+    --header-height: 80px; /* Altura do cabeçalho */
+}
+
+/* Reset básico */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    color: var(--text-color);
+    background-color: var(--light-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Cabeçalho */
+.header {
+    background-color: var(--dark-bg);
+    color: #ffffff;
+    padding: 20px 0;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header h1 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 2.2em;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header h1 .fas {
+    color: var(--primary-color);
+    font-size: 0.9em;
+}
+
+/* Contêiner Principal */
+.container {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 20px;
+    display: grid;
+    gap: 30px;
+    flex-grow: 1; /* Permite que o container ocupe o espaço restante */
+}
+
+/* Cards (Seções) */
+.card {
+    background-color: var(--card-bg);
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--border-color);
+}
+
+.card h2 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.8em;
+    color: var(--primary-color);
+    margin-bottom: 25px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card h2 .fas {
+    color: var(--secondary-color);
+}
+
+/* Formulário */
+.item-form {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Responsividade nos campos */
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-color);
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group textarea {
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 1em;
+    width: 100%;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus,
+.form-group textarea:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+    outline: none;
+}
+
+.form-group textarea {
+    resize: vertical; /* Permite redimensionar verticalmente */
+    min-height: 80px;
+}
+
+/* Botões */
+.btn {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    display: inline-flex; /* Para alinhar ícone e texto */
+    align-items: center;
+    gap: 8px;
+    justify-content: center; /* Centraliza conteúdo do botão */
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    grid-column: span 2; /* Ocupa 2 colunas no layout do form */
+    margin-top: 10px;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: #ffffff;
+    grid-column: span 2; /* Ocupa 2 colunas no layout do form */
+    margin-top: 10px;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+    transform: translateY(-2px);
+}
+
+.btn-info {
+    background-color: var(--info-color);
+    color: #ffffff;
+}
+
+.btn-info:hover {
+    background-color: #117a8b;
+    transform: translateY(-2px);
+}
+
+.btn-warning {
+    background-color: var(--warning-color);
+    color: var(--dark-bg); /* Texto mais escuro para contraste */
+}
+
+.btn-warning:hover {
+    background-color: #e0a800;
+    transform: translateY(-2px);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: #ffffff;
+}
+
+.btn-danger:hover {
+    background-color: #bd2130;
+    transform: translateY(-2px);
+}
+
+/* Estilo específico para botões de ação na tabela */
+.action-buttons button {
+    margin-left: 10px;
+}
+
+/* Imagem de pré-visualização */
+.image-preview {
+    width: 150px;
+    height: 150px;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    margin-top: 10px;
+    position: relative;
+    background-color: var(--light-bg);
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Mantém a proporção da imagem */
+    display: block;
+}
+
+.image-preview .hidden {
+    display: none;
+}
+
+#noImageText {
+    color: var(--secondary-color);
+    font-style: italic;
+    font-size: 0.9em;
+    text-align: center;
+    padding: 10px;
+}
+
+/* Seção de Ferramentas (Busca, Exportar, Importar) */
+.tools-section .search-export-import {
+    display: flex;
+    flex-wrap: wrap; /* Permite quebrar linha em telas pequenas */
+    gap: 20px;
+    align-items: flex-end; /* Alinha os itens na parte inferior */
+}
+
+.tools-section .search-group {
+    flex-grow: 1; /* Permite que o campo de busca ocupe o espaço disponível */
+    min-width: 250px; /* Garante que o campo não fique muito pequeno */
+}
+
+.tools-section .search-group input {
+    margin-top: 8px; /* Espaço entre label e input */
+}
+
+.tools-section .action-buttons {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.tools-section .action-buttons .btn {
+    height: 44px; /* Garante altura uniforme para botões */
+}
+
+.hidden-input {
+    display: none; /* Esconde o input de arquivo real */
+}
+
+/* Tabela de Itens */
+.item-list-container {
+    overflow-x: auto; /* Adiciona scroll horizontal em telas pequenas */
+}
+
+.item-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    overflow: hidden; /* Garante bordas arredondadas */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.item-table th,
+.item-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap; /* Impede que o texto quebre linhas */
+}
+
+.item-table th {
+    background-color: var(--light-bg);
+    color: var(--primary-color);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.9em;
+}
+
+.item-table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05); /* Leve destaque ao passar o mouse */
+}
+
+.item-table td img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.item-table td:last-child {
+    display: flex;
+    gap: 8px;
+    justify-content: center; /* Centraliza os botões de ação */
+    align-items: center;
+}
+
+.item-table .btn-action {
+    padding: 8px 12px;
+    font-size: 0.85em;
+}
+
+.no-items-message {
+    text-align: center;
+    color: var(--secondary-color);
+    padding: 30px;
+    font-size: 1.1em;
+    font-style: italic;
+    background-color: rgba(0, 123, 255, 0.05);
+    border-radius: 8px;
+    border: 1px dashed var(--primary-color);
+}
+
+.item-table.hidden,
+.no-items-message.hidden {
+    display: none;
+}
+
+/* Rodapé */
+.footer {
+    background-color: var(--dark-bg);
+    color: #ffffff;
+    text-align: center;
+    padding: 20px 0;
+    margin-top: 30px;
+    font-size: 0.9em;
+}
+
+.footer .fas {
+    color: var(--danger-color);
+    margin: 0 5px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 1.8em;
+    }
+
+    .container {
+        margin: 20px auto;
+        padding: 0 15px;
+        grid-template-columns: 1fr; /* Uma coluna em telas menores */
+    }
+
+    .card {
+        padding: 20px;
+    }
+
+    .card h2 {
+        font-size: 1.5em;
+        margin-bottom: 15px;
+    }
+
+    .item-form {
+        grid-template-columns: 1fr; /* Uma coluna em telas pequenas */
+    }
+
+    .btn-primary, .btn-secondary {
+        grid-column: auto; /* Não ocupa todas as colunas em telas pequenas */
+        width: 100%; /* Ocupa largura total */
+    }
+
+    .tools-section .search-export-import {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tools-section .action-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .tools-section .action-buttons .btn {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .item-table th,
+    .item-table td {
+        padding: 10px;
+        font-size: 0.9em;
+    }
+
+    .item-table td img {
+        width: 50px;
+        height: 50px;
+    }
+
+    .item-table td:last-child {
+        flex-direction: column;
+        gap: 5px;
+    }
+}
+
+@media (max-width: 480px) {
+    .header h1 {
+        font-size: 1.5em;
+    }
+    .card h2 {
+        font-size: 1.3em;
+    }
+    .btn {
+        font-size: 0.9em;
+        padding: 10px 15px;
+    }
+}

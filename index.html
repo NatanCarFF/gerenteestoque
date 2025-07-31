@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestão de Estoque</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header">
+        <h1><i class="fas fa-warehouse"></i> Gestão de Estoque</h1>
+    </header>
+
+    <main class="container">
+        <section class="item-form-section card">
+            <h2><i class="fas fa-plus-circle"></i> Cadastrar Novo Item</h2>
+            <form id="itemForm" class="item-form">
+                <div class="form-group">
+                    <label for="itemImage">Imagem do Item:</label>
+                    <input type="file" id="itemImage" accept="image/*">
+                    <div class="image-preview" id="imagePreview">
+                        <img id="previewImage" src="" alt="Pré-visualização da Imagem" class="hidden">
+                        <p id="noImageText">Nenhuma imagem selecionada</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="itemName">Nome do Item:</label>
+                    <input type="text" id="itemName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="itemDescription">Descrição:</label>
+                    <textarea id="itemDescription" rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="itemQuantity">Quantidade:</label>
+                    <input type="number" id="itemQuantity" min="0" value="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="itemPurchasePrice">Preço de Compra (R$):</label>
+                    <input type="number" id="itemPurchasePrice" step="0.01" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="itemSalePrice">Preço de Venda (R$):</label>
+                    <input type="number" id="itemSalePrice" step="0.01" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="itemSupplier">Fornecedor:</label>
+                    <input type="text" id="itemSupplier">
+                </div>
+                
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Item</button>
+                <button type="button" class="btn btn-secondary" id="cancelEditBtn" style="display:none;"><i class="fas fa-times"></i> Cancelar Edição</button>
+            </form>
+        </section>
+
+        <section class="tools-section card">
+            <h2><i class="fas fa-tools"></i> Ferramentas do Estoque</h2>
+            <div class="search-export-import">
+                <div class="form-group search-group">
+                    <label for="searchTerm"><i class="fas fa-search"></i> Buscar Item:</label>
+                    <input type="text" id="searchTerm" placeholder="Digite nome, descrição ou fornecedor...">
+                </div>
+                <div class="action-buttons">
+                    <button id="exportData" class="btn btn-info"><i class="fas fa-file-export"></i> Exportar Dados (JSON)</button>
+                    <label for="importFile" class="btn btn-warning"><i class="fas fa-file-import"></i> Importar Dados (JSON)
+                        <input type="file" id="importFile" accept=".json" class="hidden-input">
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <section class="item-list-section card">
+            <h2><i class="fas fa-boxes"></i> Itens em Estoque</h2>
+            <div class="item-list-container">
+                <p id="noItemsMessage" class="no-items-message">Nenhum item cadastrado ainda. Comece adicionando um novo item!</p>
+                <table class="item-table hidden" id="itemTable">
+                    <thead>
+                        <tr>
+                            <th>Imagem</th>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Descrição</th>
+                            <th>Qtd.</th>
+                            <th>Preço Compra</th>
+                            <th>Preço Venda</th>
+                            <th>Fornecedor</th>
+                            <th>Cadastro</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemList">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2025 Sistema de Gestão de Estoque. Desenvolvido com <i class="fas fa-heart"></i> e JavaScript.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
