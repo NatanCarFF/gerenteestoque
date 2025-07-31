@@ -370,6 +370,77 @@ body {
     margin: 0 5px;
 }
 
+/* --- Estilos para Notificações (Alertas Temporários) --- */
+.notification-container {
+    position: fixed;
+    top: calc(var(--header-height) + 20px); /* Ajusta abaixo do cabeçalho */
+    right: 20px;
+    z-index: 1000; /* Garante que fique acima de outros elementos */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 350px;
+    pointer-events: none; /* Permite clicar através do contêiner vazio */
+}
+
+.notification {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    opacity: 0; /* Começa invisível */
+    transform: translateX(100%); /* Começa fora da tela */
+    animation: slideIn 0.5s forwards, fadeOut 0.5s forwards 2.5s; /* Animação de entrada e saída */
+    pointer-events: auto; /* Permite interagir com a notificação individual */
+}
+
+.notification.success {
+    background-color: var(--success-color);
+    color: #fff;
+}
+
+.notification.error {
+    background-color: var(--danger-color);
+    color: #fff;
+}
+
+.notification.info {
+    background-color: var(--info-color);
+    color: #fff;
+}
+
+.notification .icon {
+    font-size: 1.5em;
+}
+
+.notification .message {
+    font-weight: 600;
+}
+
+/* Animações para as notificações */
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+
 /* Responsividade */
 @media (max-width: 768px) {
     .header h1 {
@@ -429,6 +500,14 @@ body {
     .item-table td:last-child {
         flex-direction: column;
         gap: 5px;
+    }
+
+    /* Responsividade para notificações */
+    .notification-container {
+        top: calc(var(--header-height) + 10px);
+        right: 10px;
+        left: 10px; /* Ocupa a largura total em telas pequenas */
+        max-width: unset; /* Remove largura máxima */
     }
 }
 

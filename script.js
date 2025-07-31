@@ -19,10 +19,47 @@ const importFileInput = document.getElementById('importFile');
 const itemListBody = document.getElementById('itemList'); // tbody da tabela
 const itemTable = document.getElementById('itemTable');
 const noItemsMessage = document.getElementById('noItemsMessage');
+const notificationContainer = document.getElementById('notification-container'); // Contêiner de notificações
 
 let editingItemId = null; // Variável para controlar se estamos editando um item existente
 
 // --- Funções Auxiliares ---
+
+/**
+ * Exibe uma notificação temporária no canto superior direito da tela.
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {string} type - O tipo de notificação ('success', 'error', 'info').
+ * @param {number} duration - Duração em milissegundos para a notificação permanecer.
+ */
+function showNotification(message, type = 'info', duration = 3000) {
+    const notification = document.createElement('div');
+    notification.classList.add('notification', type);
+
+    let iconClass = '';
+    if (type === 'success') iconClass = 'fas fa-check-circle';
+    else if (type === 'error') iconClass = 'fas fa-exclamation-triangle';
+    else iconClass = 'fas fa-info-circle';
+
+    notification.innerHTML = `
+        <i class="icon ${iconClass}"></i>
+        <span class="message">${message}</span>
+    `;
+
+    notificationContainer.appendChild(notification);
+
+    // Força o reflow para garantir que a animação slideIn funcione
+    void notification.offsetWidth;
+
+    // Adiciona a classe para iniciar a animação
+    notification.style.animation = 'slideIn 0.5s forwards';
+
+    // Remove a notificação após a duração e inicia a animação de saída
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.5s forwards';
+        notification.addEventListener('animationend', () => notification.remove(), { once: true });
+    }, duration);
+}
+
 
 /**
  * Carrega os itens do LocalStorage.
@@ -34,6 +71,7 @@ function loadItems() {
         return items;
     } catch (e) {
         console.error("Erro ao carregar itens do LocalStorage:", e);
+        showNotification("Erro ao carregar dados do estoque. Pode ser que o LocalStorage esteja corrompido.", "error");
         return [];
     }
 }
@@ -43,8 +81,13 @@ function loadItems() {
  * @param {Array} items - Array de objetos de itens a serem salvos.
  */
 function saveItems(items) {
-    localStorage.setItem('stockItems', JSON.stringify(items));
-    renderItems(); // Renderiza os itens novamente após salvar
+    try {
+        localStorage.setItem('stockItems', JSON.stringify(items));
+        renderItems(); // Renderiza os itens novamente após salvar
+    } catch (e) {
+        console.error("Erro ao salvar itens no LocalStorage:", e);
+        showNotification("Erro ao salvar dados do estoque. O armazenamento pode estar cheio ou inacessível.", "error");
+    }
 }
 
 /**
@@ -92,9 +135,8 @@ function clearForm() {
 
 /**
  * Renderiza a lista de itens na tabela.
- * @param {Array} [itemsToRender=loadItems()] - Array de itens para renderizar. Se não for fornecido, carrega todos.
  */
-function renderItems() { // Não recebe mais itemsToRender diretamente, a função carrega e filtra internamente
+function renderItems() {
     itemListBody.innerHTML = ''; // Limpa a tabela antes de renderizar
     const items = loadItems();
 
@@ -109,12 +151,11 @@ function renderItems() { // Não recebe mais itemsToRender diretamente, a funç�
     toggleTableVisibility(); // Atualiza a visibilidade da tabela/mensagem
 
     if (filteredItems.length === 0 && searchTerm !== "") {
-        // Já tratado em toggleTableVisibility, mas podemos adicionar um feedback aqui se necessário.
-        // Por exemplo, uma linha na tabela informando que nada foi encontrado.
-        // itemListBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px;">Nenhum item encontrado para "${searchTerm}".</td></tr>`;
+        // Já tratado em toggleTableVisibility. Se quiser uma linha na tabela:
+        itemListBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px;">Nenhum item encontrado para "${searchTerm}".</td></tr>`;
         return;
-    } else if (filteredItems.length === 0) {
-        // Já tratado em toggleTableVisibility.
+    } else if (filteredItems.length === 0 && searchTerm === "") {
+        // Já tratado em toggleTableVisibility. Não precisa de nada aqui.
         return;
     }
 
@@ -130,7 +171,8 @@ function renderItems() { // Não recebe mais itemsToRender diretamente, a funç�
         row.innerHTML = `
             <td><img src="${item.image || 'assets/images/placeholder.png'}" alt="${item.name}" loading="lazy"></td>
             <td>${item.id.substring(0, 8)}...</td> <td>${item.name}</td>
-            <td class="description-cell">${item.description}</td> <td>${item.quantity}</td>
+            <td class="description-cell">${item.description}</td>
+            <td>${item.quantity}</td>
             <td>${purchasePriceFormatted}</td>
             <td>${salePriceFormatted}</td>
             <td>${item.supplier}</td>
@@ -152,22 +194,59 @@ function renderItems() { // Não recebe mais itemsToRender diretamente, a funç�
 async function addItem(event) {
     event.preventDefault(); // Impede o recarregamento da página
 
+    // --- Validação Básica ---
+    if (!itemNameInput.value.trim()) {
+        showNotification("O nome do item é obrigatório.", "error");
+        itemNameInput.focus();
+        return;
+    }
+    if (isNaN(parseInt(itemQuantityInput.value)) || parseInt(itemQuantityInput.value) < 0) {
+        showNotification("A quantidade deve ser um número válido e não negativo.", "error");
+        itemQuantityInput.focus();
+        return;
+    }
+    if (isNaN(parseFloat(itemPurchasePriceInput.value)) || parseFloat(itemPurchasePriceInput.value) < 0) {
+        showNotification("O preço de compra deve ser um número válido e não negativo.", "error");
+        itemPurchasePriceInput.focus();
+        return;
+    }
+    if (isNaN(parseFloat(itemSalePriceInput.value)) || parseFloat(itemSalePriceInput.value) < 0) {
+        showNotification("O preço de venda deve ser um número válido e não negativo.", "error");
+        itemSalePriceInput.focus();
+        return;
+    }
+    if (parseFloat(itemSalePriceInput.value) < parseFloat(itemPurchasePriceInput.value)) {
+        showNotification("O preço de venda não pode ser menor que o preço de compra.", "error");
+        itemSalePriceInput.focus();
+        return;
+    }
+
+
     const imageFile = itemImageInput.files[0];
     let imageDataUrl = '';
 
     // Se uma nova imagem foi selecionada
     if (imageFile) {
-        // Converte a imagem para Base64
-        imageDataUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
-            reader.readAsDataURL(imageFile);
-        }).catch(error => {
+        // Limite de tamanho da imagem (ex: 1MB) para evitar sobrecarregar o localStorage
+        const MAX_IMAGE_SIZE_MB = 1;
+        if (imageFile.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+            showNotification(`A imagem é muito grande. Tamanho máximo permitido: ${MAX_IMAGE_SIZE_MB}MB.`, "error");
+            itemImageInput.value = ''; // Limpa o input file
+            return;
+        }
+
+        try {
+            imageDataUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(imageFile);
+            });
+        } catch (error) {
             console.error("Erro ao ler arquivo de imagem:", error);
-            alert("Erro ao carregar a imagem. Tente novamente.");
-            return '';
-        });
+            showNotification("Não foi possível carregar a imagem. Tente outra.", "error");
+            return; // Impede que o item seja salvo sem a imagem
+        }
     } else if (editingItemId) {
         // Se estiver editando e nenhuma nova imagem foi selecionada, mantém a imagem existente
         const existingItem = loadItems().find(item => item.id === editingItemId);
@@ -193,11 +272,11 @@ async function addItem(event) {
     if (editingItemId) {
         // Modo de edição: encontra e atualiza o item
         items = items.map(item => item.id === editingItemId ? { ...item, ...newItem } : item);
-        alert('Item atualizado com sucesso!');
+        showNotification('Item atualizado com sucesso!', 'success');
     } else {
         // Modo de adição: adiciona novo item
         items.push(newItem);
-        alert('Item cadastrado com sucesso!');
+        showNotification('Item cadastrado com sucesso!', 'success');
     }
 
     saveItems(items);
@@ -235,6 +314,8 @@ function editItem(id) {
         saveItemBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Item'; // Ícone de atualização
         cancelEditBtn.style.display = 'inline-flex'; // Mostra o botão de cancelar
         window.scrollTo({ top: 0, behavior: 'smooth' }); // Rola para o topo para facilitar a edição
+    } else {
+        showNotification("Item não encontrado para edição.", "error");
     }
 }
 
@@ -245,12 +326,18 @@ function editItem(id) {
 function deleteItem(id) {
     if (confirm('Tem certeza que deseja excluir este item?')) {
         let items = loadItems();
+        const initialLength = items.length;
         items = items.filter(item => item.id !== id);
-        saveItems(items);
-        alert('Item excluído com sucesso!');
-        // Se estiver editando o item que foi excluído, limpa o formulário
-        if (editingItemId === id) {
-            clearForm();
+
+        if (items.length < initialLength) { // Verifica se algum item foi realmente removido
+            saveItems(items);
+            showNotification('Item excluído com sucesso!', 'success');
+            // Se estiver editando o item que foi excluído, limpa o formulário
+            if (editingItemId === id) {
+                clearForm();
+            }
+        } else {
+            showNotification("Erro ao excluir item: Item não encontrado.", "error");
         }
     }
 }
@@ -263,11 +350,29 @@ function deleteItem(id) {
 function handleImagePreview() {
     const file = itemImageInput.files[0];
     if (file) {
+        // Limite de tamanho da imagem (ex: 1MB) para pré-visualização
+        const MAX_IMAGE_SIZE_MB = 1;
+        if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+            showNotification(`A imagem selecionada é muito grande para pré-visualização imediata. Tamanho máximo: ${MAX_IMAGE_SIZE_MB}MB.`, "warning", 5000);
+            previewImage.src = '';
+            previewImage.classList.add('hidden');
+            noImageText.classList.remove('hidden');
+            // Não limpa o input, permite que o usuário tente salvar se desejar, mas ele será validado em addItem
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = function(e) {
             previewImage.src = e.target.result;
             previewImage.classList.remove('hidden');
             noImageText.classList.add('hidden');
+        };
+        reader.onerror = (error) => {
+            console.error("Erro ao ler arquivo de imagem para pré-visualização:", error);
+            showNotification("Erro ao pré-visualizar imagem. Tente outro arquivo.", "error");
+            previewImage.src = '';
+            previewImage.classList.add('hidden');
+            noImageText.classList.remove('hidden');
         };
         reader.readAsDataURL(file);
     } else {
@@ -287,17 +392,27 @@ function handleImagePreview() {
  */
 function exportData() {
     const items = loadItems();
-    const dataStr = JSON.stringify(items, null, 2); // Formata com indentação
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `estoque_backup_${new Date().toISOString().split('T')[0]}.json`; // Nome do arquivo com data
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url); // Libera o URL do objeto
-    alert('Dados exportados com sucesso!');
+    if (items.length === 0) {
+        showNotification("Não há dados para exportar.", "info");
+        return;
+    }
+
+    try {
+        const dataStr = JSON.stringify(items, null, 2); // Formata com indentação
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `estoque_backup_${new Date().toISOString().split('T')[0]}.json`; // Nome do arquivo com data
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url); // Libera o URL do objeto
+        showNotification('Dados exportados com sucesso!', 'success');
+    } catch (error) {
+        console.error("Erro ao exportar dados:", error);
+        showNotification("Erro ao exportar dados. Tente novamente.", "error");
+    }
 }
 
 /**
@@ -311,7 +426,8 @@ function importData(event) {
     }
 
     if (!file.name.endsWith('.json')) {
-        alert('Por favor, selecione um arquivo JSON válido.');
+        showNotification('Por favor, selecione um arquivo JSON válido.', 'error');
+        importFileInput.value = '';
         return;
     }
 
@@ -320,12 +436,27 @@ function importData(event) {
         try {
             const importedItems = JSON.parse(e.target.result);
             if (!Array.isArray(importedItems)) {
-                throw new Error('O arquivo JSON não contém um array de itens válido.');
+                throw new Error('O arquivo JSON não contém um array de itens válido (esperado um array principal).');
             }
 
-            // Opcional: perguntar ao usuário se deseja sobrescrever ou mesclar
+            // Opcional: validar estrutura básica dos itens importados
+            const isValidImport = importedItems.every(item =>
+                typeof item.id === 'string' &&
+                typeof item.name === 'string' &&
+                typeof item.quantity === 'number' &&
+                typeof item.purchasePrice === 'number' &&
+                typeof item.salePrice === 'number'
+                // Pode adicionar mais validações aqui
+            );
+
+            if (!isValidImport && importedItems.length > 0) {
+                 showNotification('O arquivo JSON contém itens com formato inválido. A importação pode não ser completa.', 'warning', 7000);
+            }
+
+
             if (confirm('Deseja sobrescrever o estoque atual com os dados importados? Clique em OK para sobrescrever, ou Cancelar para mesclar (adicionar novos itens e atualizar existentes).')) {
                 saveItems(importedItems); // Sobrescreve
+                showNotification('Dados importados e estoque sobrescrito com sucesso!', 'success');
             } else {
                 // Mesclar: adicionar novos itens e atualizar existentes
                 let currentItems = loadItems();
@@ -340,13 +471,12 @@ function importData(event) {
                     }
                 });
                 saveItems(currentItems);
+                showNotification('Dados importados e mesclados com sucesso!', 'success');
             }
 
-            alert('Dados importados com sucesso!');
-            // A função saveItems já chama renderItems, então não precisamos chamar aqui novamente.
         } catch (error) {
             console.error("Erro ao importar dados:", error);
-            alert('Erro ao importar o arquivo JSON. Certifique-se de que o arquivo está no formato correto. Detalhes: ' + error.message);
+            showNotification('Erro ao importar o arquivo JSON. Certifique-se de que o arquivo está no formato correto. Detalhes: ' + error.message, 'error');
         } finally {
             importFileInput.value = ''; // Limpa o input file para permitir nova importação do mesmo arquivo
         }
