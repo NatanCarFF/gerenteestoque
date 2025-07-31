@@ -155,22 +155,20 @@ function clearForm() {
 }
 
 /**
- * Exibe ou esconde a tabela e a mensagem "nenhum item".
- * @param {Array} filteredItems - Itens já filtrados para verificação.
+ * Exibe ou esconde a tabela e a mensagem "nenhum item", ajustando o texto.
+ * @param {Array} itemsToDisplay - Itens que serão exibidos na página atual.
+ * @param {boolean} isFilteredOrSearched - Indica se há um filtro ou busca ativos.
  */
-function toggleTableVisibility(filteredItems) {
-    const searchTerm = searchTermInput.value.toLowerCase().trim();
-
-    if (filteredItems.length === 0 && searchTerm === "") { // Nenhum item e nenhuma busca ativa
+function toggleTableVisibility(itemsToDisplay, isFilteredOrSearched) {
+    if (itemsToDisplay.length === 0) {
         itemTable.classList.add('hidden');
         noItemsMessage.classList.remove('hidden');
-        noItemsMessage.textContent = 'Nenhum item cadastrado ainda. Comece adicionando um novo item!';
-    } else if (filteredItems.length === 0 && searchTerm !== "") { // Nenhuma busca encontrou resultados
-        itemTable.classList.add('hidden');
-        noItemsMessage.classList.remove('hidden');
-        noItemsMessage.textContent = `Nenhum item encontrado para "${searchTerm}".`;
-    }
-    else { // Itens encontrados (com ou sem busca)
+        if (isFilteredOrSearched) {
+            noItemsMessage.textContent = `Nenhum item encontrado que corresponda à sua busca ou filtro.`;
+        } else {
+            noItemsMessage.textContent = 'Nenhum item cadastrado ainda. Comece adicionando um novo item!';
+        }
+    } else {
         itemTable.classList.remove('hidden');
         noItemsMessage.classList.add('hidden');
     }
@@ -235,12 +233,15 @@ function renderItems() {
     const endIndex = itemsPerPage === 'all' ? filteredItems.length : startIndex + itemsPerPage;
     const itemsToDisplay = filteredItems.slice(startIndex, endIndex);
 
-    toggleTableVisibility(itemsToDisplay); // Atualiza a visibilidade da tabela/mensagem com base nos itens a exibir
+    const isFilteredOrSearched = searchTerm !== "" || showLowStockItemsBtn.classList.contains('active');
+    toggleTableVisibility(itemsToDisplay, isFilteredOrSearched);
 
-    if (itemsToDisplay.length === 0 && (searchTerm !== "" || showLowStockItemsBtn.classList.contains('active'))) {
-        itemListBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px;">Nenhum item corresponde aos critérios de busca ou filtro.</td></tr>`;
-    } else if (itemsToDisplay.length === 0 && searchTerm === "") {
-        // Já tratado por toggleTableVisibility
+    if (itemsToDisplay.length === 0) {
+        if (isFilteredOrSearched) {
+            itemListBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px;">Nenhum item corresponde aos critérios de busca ou filtro.</td></tr>`;
+        } else {
+            itemListBody.innerHTML = '';
+        }
         return;
     }
 
@@ -282,6 +283,7 @@ function renderItems() {
 function updateStockSummary() {
     const items = loadItems();
     const lowStockThreshold = parseInt(lowStockThresholdInput.value) || 0;
+
     let totalItems = 0;
     let totalPurchase = 0;
     let totalSale = 0;
@@ -298,6 +300,7 @@ function updateStockSummary() {
 
     totalItemsCount.textContent = totalItems.toLocaleString('pt-BR');
     totalPurchaseValue.textContent = totalPurchase.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    totalSaleValue.textContent = totalSale.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     potentialProfit.textContent = (totalSale - totalPurchase).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     lowStockItemsCount.textContent = lowStockCount.toLocaleString('pt-BR');
 
@@ -312,6 +315,7 @@ function updateStockSummary() {
  */
 function updatePaginationControls(totalFilteredItems, totalPages) {
     const isAllItems = itemsPerPageSelect.value === 'all';
+
     if (isAllItems || totalPages === 0) {
         currentPageInfo.textContent = `Todos os ${totalFilteredItems} itens`;
         prevPageBtn.disabled = true;
@@ -322,6 +326,7 @@ function updatePaginationControls(totalFilteredItems, totalPages) {
         nextPageBtn.disabled = currentPage === totalPages;
     }
 }
+
 
 /**
  * Carrega o histórico de movimentações do LocalStorage para um item específico.
@@ -365,125 +370,132 @@ function renderHistory(itemId) {
 
     if (history.length === 0) {
         noHistoryMessage.classList.remove('hidden');
-        historyListBody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Nenhum histórico para este item.</td></tr>`;
+        historyListBody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico de movimentação para este item.</td></tr>`;
     } else {
         noHistoryMessage.classList.add('hidden');
-        history.forEach((movement, index) => {
+        // Ordena o histórico do mais recente para o mais antigo
+        history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        history.forEach(mov => {
             const row = historyListBody.insertRow();
-            const dateFormatted = new Date(movement.date).toLocaleDateString('pt-BR') + ' ' +
-                                 new Date(movement.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+            row.dataset.movementId = mov.id;
+            const typeIcon = mov.type === 'entrada' ? '<i class="fas fa-arrow-alt-circle-down" style="color: green;"></i> Entrada' : '<i class="fas fa-arrow-alt-circle-up" style="color: red;"></i> Saída';
+            const quantityText = mov.type === 'saida' ? `-${mov.quantity}` : `+${mov.quantity}`;
+
             row.innerHTML = `
-                <td>${movement.type === 'entry' ? 'Entrada' : 'Saída'}</td>
-                <td class="${movement.type === 'entry' ? 'text-success' : 'text-danger'}">${movement.quantity}</td>
-                <td>${dateFormatted}</td>
+                <td>${typeIcon}</td>
+                <td>${quantityText}</td>
+                <td>${new Date(mov.date).toLocaleDateString('pt-BR')} ${new Date(mov.date).toLocaleTimeString('pt-BR')}</td>
                 <td>
-                    <button class="btn btn-danger btn-sm" onclick="showConfirmationModal('Tem certeza que deseja remover este movimento?', () => deleteMovement('${itemId}', ${index}))"><i class="fas fa-times-circle"></i></button>
+                    <button class="btn btn-danger btn-action" onclick="showConfirmationModal('Tem certeza que deseja remover este movimento?', () => deleteMovementConfirmed('${itemId}', '${mov.id}'))" title="Remover Movimento"><i class="fas fa-times"></i></button>
                 </td>
             `;
         });
     }
 }
 
-
-// --- Funções Principais de CRUD e Lógica de Negócio ---
+// --- Funções de CRUD e Movimentação ---
 
 /**
- * Adiciona ou edita um item no estoque.
+ * Adiciona um novo item ou atualiza um item existente.
  * @param {Event} event - O evento de submit do formulário.
  */
-itemForm.addEventListener('submit', (event) => {
-    event.preventDefault(); // Impede o recarregamento da página
+async function addItem(event) {
+    event.preventDefault();
 
-    // Validação básica
+    // --- Validação Básica ---
     if (!itemNameInput.value.trim()) {
-        showNotification("Por favor, preencha o nome do item.", "warning");
+        showNotification("O nome do item é obrigatório.", "error");
         itemNameInput.focus();
         return;
     }
-    if (itemQuantityInput.value < 0) {
-        showNotification("A quantidade não pode ser negativa.", "warning");
+
+    const quantity = parseInt(itemQuantityInput.value);
+    if (isNaN(quantity) || quantity < 0) {
+        showNotification("A quantidade deve ser um número válido e não negativo.", "error");
         itemQuantityInput.focus();
         return;
     }
-    if (itemPurchasePriceInput.value < 0 || itemSalePriceInput.value < 0) {
-        showNotification("Os preços não podem ser negativos.", "warning");
+
+    const purchasePrice = parseFloat(itemPurchasePriceInput.value);
+    if (isNaN(purchasePrice) || purchasePrice < 0) {
+        showNotification("O preço de compra deve ser um número válido e não negativo.", "error");
         itemPurchasePriceInput.focus();
         return;
     }
-    if (parseFloat(itemSalePriceInput.value) < parseFloat(itemPurchasePriceInput.value)) {
-        showNotification("O preço de venda não pode ser menor que o preço de compra.", "warning");
+
+    const salePrice = parseFloat(itemSalePriceInput.value);
+    if (isNaN(salePrice) || salePrice < 0) {
+        showNotification("O preço de venda deve ser um número válido e não negativo.", "error");
         itemSalePriceInput.focus();
         return;
     }
 
-    const items = loadItems();
-    const isEditing = editingItemId !== null;
-
-    // Verifica se o nome do item já existe (apenas para novos itens ou se o nome foi alterado durante a edição)
-    const existingItem = items.find(item => item.name.toLowerCase() === itemNameInput.value.trim().toLowerCase() && item.id !== editingItemId);
-    if (existingItem) {
-        showNotification("Já existe um item com este nome. Por favor, escolha um nome diferente.", "error");
-        itemNameInput.focus();
+    if (salePrice < purchasePrice) {
+        showNotification("O preço de venda não pode ser menor que o preço de compra.", "error");
+        itemSalePriceInput.focus();
         return;
     }
 
-    const reader = new FileReader();
+    const imageFile = itemImageInput.files[0];
+    let imageDataUrl = '';
 
-    reader.onloadend = () => {
-        const newItem = {
-            id: isEditing ? editingItemId : Date.now().toString(), // Usa o ID existente ou gera um novo
-            image: reader.result, // Base64 da imagem
-            name: itemNameInput.value.trim(),
-            description: itemDescriptionInput.value.trim(),
-            quantity: parseInt(itemQuantityInput.value),
-            purchasePrice: parseFloat(itemPurchasePriceInput.value).toFixed(2), // Garante 2 casas decimais
-            salePrice: parseFloat(itemSalePriceInput.value).toFixed(2),     // Garante 2 casas decimais
-            supplier: itemSupplierInput.value.trim(),
-            registeredAt: isEditing ? items.find(item => item.id === editingItemId).registeredAt : new Date().toISOString() // Mantém a data de registro original ou cria uma nova
-        };
-
-        if (isEditing) {
-            const itemIndex = items.findIndex(item => item.id === editingItemId);
-            if (itemIndex > -1) {
-                items[itemIndex] = newItem;
-                showNotification("Item atualizado com sucesso!", "success");
-            }
-        } else {
-            items.push(newItem);
-            showNotification("Item cadastrado com sucesso!", "success");
+    if (imageFile) {
+        const MAX_IMAGE_SIZE_MB = 1;
+        if (imageFile.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+            showNotification(`A imagem é muito grande. Tamanho máximo permitido: ${MAX_IMAGE_SIZE_MB}MB.`, "error");
+            itemImageInput.value = '';
+            return;
         }
 
-        saveItems(items);
-        clearForm(); // Limpa o formulário após salvar
+        try {
+            imageDataUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(imageFile);
+            });
+        } catch (error) {
+            console.error("Erro ao ler arquivo de imagem:", error);
+            showNotification("Não foi possível carregar a imagem. Tente outra.", "error");
+            return;
+        }
+    } else if (editingItemId) {
+        const existingItem = loadItems().find(item => item.id === editingItemId);
+        if (existingItem) {
+            imageDataUrl = existingItem.image || '';
+        }
+    }
+
+    const newItem = {
+        id: editingItemId || Date.now().toString(36) + Math.random().toString(36).substr(2, 9),
+        name: itemNameInput.value.trim(),
+        description: itemDescriptionInput.value.trim(),
+        quantity: quantity,
+        purchasePrice: purchasePrice,
+        salePrice: salePrice,
+        supplier: itemSupplierInput.value.trim(),
+        image: imageDataUrl,
+        registeredAt: editingItemId ? loadItems().find(item => item.id === editingItemId).registeredAt : new Date().toISOString()
     };
 
-    if (itemImageInput.files.length > 0) {
-        reader.readAsDataURL(itemImageInput.files[0]);
-    } else {
-        // Se não houver imagem, usa a imagem existente se estiver editando, ou null para novo item
-        reader.onloadend(); // Chama onloadend diretamente para continuar o processo
-    }
-});
+    let items = loadItems();
 
-// Pré-visualização da imagem
-itemImageInput.addEventListener('change', (event) => {
-    if (event.target.files && event.target.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            previewImage.src = e.target.result;
-            previewImage.classList.remove('hidden');
-            noImageText.classList.add('hidden');
-        };
-        reader.readAsDataURL(event.target.files[0]);
+    if (editingItemId) {
+        items = items.map(item => item.id === editingItemId ? { ...item, ...newItem } : item);
+        showNotification('Item atualizado com sucesso!', 'success');
     } else {
-        previewImage.src = '';
-        previewImage.classList.add('hidden');
-        noImageText.classList.remove('hidden');
+        items.push(newItem);
+        showNotification('Item cadastrado com sucesso!', 'success');
     }
-});
+
+    saveItems(items);
+    clearForm();
+    applySaveAnimation(); // Aplica a animação de "salvo"
+}
 
 /**
- * Preenche o formulário com os dados do item para edição.
+ * Preenche o formulário para edição de um item.
  * @param {string} id - O ID do item a ser editado.
  */
 function editItem(id) {
@@ -499,7 +511,6 @@ function editItem(id) {
         itemSalePriceInput.value = itemToEdit.salePrice;
         itemSupplierInput.value = itemToEdit.supplier;
 
-        // Exibir imagem de pré-visualização, se houver
         if (itemToEdit.image) {
             previewImage.src = itemToEdit.image;
             previewImage.classList.remove('hidden');
@@ -510,19 +521,18 @@ function editItem(id) {
             noImageText.classList.remove('hidden');
         }
 
-        // Altera o texto e exibe o botão de cancelar
         saveItemBtn.innerHTML = '<i class="fas fa-save"></i> Atualizar Item';
-        cancelEditBtn.style.display = 'inline-flex';
-
-        window.scrollTo({ top: 0, behavior: 'smooth' }); // Rola para o topo da página
+        cancelEditBtn.style.display = 'inline-block'; // Mostra o botão de cancelar
+        window.scrollTo({ top: 0, behavior: 'smooth' }); // Rola para o topo do formulário
+        itemNameInput.focus(); // Coloca o foco no nome do item
     } else {
-        showNotification("Item não encontrado para edição.", "error");
+        showNotification('Item não encontrado para edição.', 'error');
     }
 }
 
 /**
- * Deleta um item do estoque. Esta função é chamada após a confirmação.
- * @param {string} id - O ID do item a ser deletado.
+ * Confirma a exclusão de um item após a confirmação do modal.
+ * @param {string} id - O ID do item a ser excluído.
  */
 function deleteItemConfirmed(id) {
     let items = loadItems();
@@ -531,58 +541,226 @@ function deleteItemConfirmed(id) {
 
     if (items.length < initialLength) {
         saveItems(items);
-        // Remove o histórico de movimentação para o item excluído
-        let allHistory = JSON.parse(localStorage.getItem('movementHistory')) || {};
+        // Também remove o histórico de movimentação associado a este item
+        const allHistory = JSON.parse(localStorage.getItem('movementHistory')) || {};
         delete allHistory[id];
         localStorage.setItem('movementHistory', JSON.stringify(allHistory));
 
-        showNotification("Item excluído com sucesso!", "success");
+        showNotification('Item excluído com sucesso!', 'success');
+        closeConfirmationModal(); // Fecha o modal de confirmação
     } else {
-        showNotification("Erro ao excluir item. Item não encontrado.", "error");
+        showNotification('Erro ao excluir item. Item não encontrado.', 'error');
     }
-    closeConfirmationModal(); // Fecha o modal de confirmação
+}
+
+
+/**
+ * Adiciona um movimento (entrada/saída) ao histórico de um item.
+ * @param {string} itemId - O ID do item.
+ */
+function addMovement(itemId) {
+    const type = movementTypeSelect.value;
+    const quantity = parseInt(movementQuantityInput.value);
+
+    if (isNaN(quantity) || quantity <= 0) {
+        showNotification("A quantidade deve ser um número positivo.", "error");
+        return;
+    }
+
+    let items = loadItems();
+    const itemIndex = items.findIndex(item => item.id === itemId);
+
+    if (itemIndex > -1) {
+        const item = items[itemIndex];
+        let newQuantity = item.quantity;
+        let notificationMessage = '';
+        let notificationType = 'success';
+
+        if (type === 'entrada') {
+            newQuantity += quantity;
+            notificationMessage = `Entrada de ${quantity} unidades para "${item.name}" registrada.`;
+        } else if (type === 'saida') {
+            if (newQuantity >= quantity) {
+                newQuantity -= quantity;
+                notificationMessage = `Saída de ${quantity} unidades para "${item.name}" registrada.`;
+            } else {
+                showNotification(`Não há ${quantity} unidades de "${item.name}" em estoque. Quantidade atual: ${newQuantity}.`, "error");
+                return; // Impede a movimentação se não houver estoque suficiente
+            }
+        }
+
+        item.quantity = newQuantity;
+        saveItems(items); // Salva a nova quantidade do item
+
+        // Salva o movimento no histórico
+        const history = loadMovementHistory(itemId);
+        history.push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 9),
+            type: type,
+            quantity: quantity,
+            date: new Date().toISOString()
+        });
+        saveMovementHistory(itemId, history); // Salva o histórico atualizado
+
+        renderHistory(itemId); // Atualiza a lista de histórico no modal
+        updateStockSummary(); // Atualiza o resumo do estoque
+        showNotification(notificationMessage, notificationType);
+        movementQuantityInput.value = 1; // Reseta a quantidade para 1
+    } else {
+        showNotification("Item não encontrado para registrar movimentação.", "error");
+    }
 }
 
 /**
- * Cancela a edição de um item e limpa o formulário.
+ * Confirma a exclusão de um movimento de histórico após a confirmação do modal.
+ * @param {string} itemId - O ID do item.
+ * @param {string} movementId - O ID do movimento a ser excluído.
  */
-cancelEditBtn.addEventListener('click', clearForm);
+function deleteMovementConfirmed(itemId, movementId) {
+    let items = loadItems();
+    const itemIndex = items.findIndex(item => item.id === itemId);
 
+    if (itemIndex === -1) {
+        showNotification("Item não encontrado para remover movimento.", "error");
+        closeConfirmationModal();
+        return;
+    }
 
-// --- Funcionalidades de Busca e Limpeza ---
-searchTermInput.addEventListener('input', renderItems); // Renderiza ao digitar
-clearSearchBtn.addEventListener('click', () => {
-    searchTermInput.value = '';
-    clearSearchBtn.style.display = 'none'; // Esconde o botão novamente
-    renderItems();
-});
+    const item = items[itemIndex];
+    let history = loadMovementHistory(itemId);
+    const movementIndex = history.findIndex(mov => mov.id === movementId);
 
-// Mostra/esconde o botão de limpar busca
-searchTermInput.addEventListener('keyup', () => {
-    if (searchTermInput.value.length > 0) {
-        clearSearchBtn.style.display = 'inline-flex';
+    if (movementIndex > -1) {
+        const movement = history[movementIndex];
+        // Reverte a quantidade do item
+        if (movement.type === 'entrada') {
+            item.quantity -= movement.quantity;
+        } else { // tipo 'saida'
+            item.quantity += movement.quantity;
+        }
+
+        // Garante que a quantidade não seja negativa
+        if (item.quantity < 0) item.quantity = 0;
+
+        history.splice(movementIndex, 1); // Remove o movimento do histórico
+
+        saveMovementHistory(itemId, history); // Salva o histórico atualizado
+        saveItems(items); // Salva a quantidade revertida do item
+
+        renderHistory(itemId); // Re-renderiza o histórico no modal
+        showNotification('Movimento removido com sucesso!', 'success');
+        closeConfirmationModal();
     } else {
-        clearSearchBtn.style.display = 'none';
+        showNotification('Movimento não encontrado.', 'error');
+    }
+}
+
+// --- Funções de Modal ---
+
+/**
+ * Abre o modal de descrição com o texto completo.
+ * @param {string} id - O ID do item cuja descrição será exibida.
+ */
+function showDescriptionModal(id) {
+    const items = loadItems();
+    const item = items.find(item => item.id === id);
+    if (item && item.description) {
+        descriptionModalTitle.textContent = `Descrição de: ${item.name}`;
+        descriptionModalText.textContent = item.description;
+        descriptionModal.classList.add('active');
+    } else {
+        showNotification('Descrição não disponível para este item.', 'info');
+    }
+}
+
+/**
+ * Fecha o modal de descrição.
+ */
+function closeDescriptionModal() {
+    descriptionModal.classList.remove('active');
+}
+
+/**
+ * Abre o modal de confirmação.
+ * @param {string} message - A mensagem a ser exibida no modal.
+ * @param {function} callback - A função a ser executada se o usuário confirmar.
+ * @param {string} title - O título do modal de confirmação (opcional).
+ * @param {string} confirmButtonText - O texto do botão de confirmação (opcional).
+ */
+function showConfirmationModal(message, callback, title = 'Confirmação', confirmButtonText = 'Confirmar') {
+    confirmationModalTitle.textContent = title;
+    confirmationModalText.textContent = message;
+    confirmActionButton.textContent = confirmButtonText;
+    confirmationCallback = callback; // Armazena a função de callback
+    confirmationModal.classList.add('active');
+}
+
+/**
+ * Fecha o modal de confirmação e reseta o callback.
+ */
+function closeConfirmationModal() {
+    confirmationModal.classList.remove('active');
+    confirmationCallback = null; // Limpa o callback para evitar execuções indesejadas
+}
+
+/**
+ * Cancela a ação de confirmação.
+ */
+function cancelConfirmation() {
+    closeConfirmationModal();
+    showNotification('Ação cancelada.', 'info');
+}
+
+/**
+ * Executa o callback de confirmação e fecha o modal.
+ */
+confirmActionButton.addEventListener('click', () => {
+    if (confirmationCallback) {
+        confirmationCallback(); // Executa a função armazenada
     }
 });
 
+/**
+ * Abre o modal de histórico de movimentação para um item.
+ * @param {string} id - O ID do item para o qual o histórico será exibido.
+ */
+function showHistoryModal(id) {
+    const items = loadItems();
+    const item = items.find(item => item.id === id);
 
-// --- Funcionalidades de Importação e Exportação ---
+    if (item) {
+        historyModalTitle.dataset.itemId = id; // Armazena o ID do item no título do modal
+        historyItemName.textContent = item.name; // Exibe o nome do item no título
+        renderHistory(id);
+        historyModal.classList.add('active');
+    } else {
+        showNotification('Item não encontrado para visualizar histórico.', 'error');
+    }
+}
 
 /**
- * Exporta os dados do estoque para um arquivo JSON.
+ * Fecha o modal de histórico.
  */
-exportDataBtn.addEventListener('click', () => {
-    const items = loadItems();
-    const history = JSON.parse(localStorage.getItem('movementHistory')) || {};
-    const dataToExport = {
-        stockItems: items,
-        movementHistory: history,
-        lowStockThreshold: localStorage.getItem('lowStockThreshold') || '0',
-        darkModePreference: localStorage.getItem('darkMode') || 'false'
-    };
+function closeHistoryModal() {
+    historyModal.classList.remove('active');
+    movementQuantityInput.value = 1; // Reseta a quantidade para 1 ao fechar
+    movementTypeSelect.value = 'entrada'; // Reseta o tipo de movimento
+}
 
-    const dataStr = JSON.stringify(dataToExport, null, 2); // Formata com 2 espaços
+
+// --- Exportar/Importar Dados ---
+
+/**
+ * Exporta os dados de estoque e histórico para um arquivo JSON.
+ */
+function exportData() {
+    const data = {
+        stockItems: loadItems(),
+        movementHistory: JSON.parse(localStorage.getItem('movementHistory')) || {},
+        lowStockThreshold: localStorage.getItem('lowStockThreshold') || '5',
+        darkModeEnabled: localStorage.getItem('darkModeEnabled') || 'false'
+    };
+    const dataStr = JSON.stringify(data, null, 4); // Formata com 4 espaços para legibilidade
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -592,20 +770,21 @@ exportDataBtn.addEventListener('click', () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showNotification("Dados exportados com sucesso para 'estoque_backup.json'!", "success");
-});
+    showNotification('Dados exportados com sucesso!', 'success');
+}
 
 /**
  * Importa dados de um arquivo JSON.
  */
-importFileInput.addEventListener('change', (event) => {
+function importData(event) {
     const file = event.target.files[0];
     if (!file) {
+        showNotification('Nenhum arquivo selecionado para importação.', 'info');
         return;
     }
 
     if (file.type !== 'application/json') {
-        showNotification("Por favor, selecione um arquivo JSON válido.", "error");
+        showNotification('Por favor, selecione um arquivo JSON válido.', 'error');
         return;
     }
 
@@ -615,260 +794,147 @@ importFileInput.addEventListener('change', (event) => {
             const importedData = JSON.parse(e.target.result);
 
             if (importedData.stockItems && Array.isArray(importedData.stockItems)) {
-                // Pedir confirmação antes de sobrescrever
-                showConfirmationModal(
-                    'Importar dados irá substituir todos os itens e histórico existentes. Deseja continuar?',
-                    () => {
-                        localStorage.setItem('stockItems', JSON.stringify(importedData.stockItems));
-                        if (importedData.movementHistory) {
-                            localStorage.setItem('movementHistory', JSON.stringify(importedData.movementHistory));
-                        } else {
-                            localStorage.removeItem('movementHistory'); // Limpa se não houver histórico importado
-                        }
-                        if (importedData.lowStockThreshold) {
-                            localStorage.setItem('lowStockThreshold', importedData.lowStockThreshold);
-                        }
-                        if (importedData.darkModePreference) {
-                            localStorage.setItem('darkMode', importedData.darkModePreference);
-                            loadDarkModePreference(); // Aplica a preferência importada
-                        }
-
-                        renderItems();
-                        updateStockSummary();
-                        showNotification("Dados importados com sucesso!", "success");
-                        closeConfirmationModal();
-                    }
-                );
+                localStorage.setItem('stockItems', JSON.stringify(importedData.stockItems));
             } else {
-                showNotification("O arquivo JSON não parece conter dados de estoque válidos.", "error");
+                showNotification('O arquivo JSON não contém uma estrutura válida de "stockItems".', 'error');
+                return;
             }
+
+            if (importedData.movementHistory && typeof importedData.movementHistory === 'object') {
+                localStorage.setItem('movementHistory', JSON.stringify(importedData.movementHistory));
+            } else {
+                showNotification('O arquivo JSON não contém uma estrutura válida de "movementHistory".', 'error');
+                return;
+            }
+
+            if (importedData.lowStockThreshold !== undefined) {
+                localStorage.setItem('lowStockThreshold', importedData.lowStockThreshold.toString());
+            }
+
+            if (importedData.darkModeEnabled !== undefined) {
+                localStorage.setItem('darkModeEnabled', importedData.darkModeEnabled.toString());
+                loadDarkModePreference(); // Aplica a preferência importada
+            }
+
+            showNotification('Dados importados e carregados com sucesso!', 'success');
+            clearForm();
+            searchTermInput.value = ''; // Limpa o campo de busca
+            currentPage = 1; // Volta para a primeira página
+            renderItems();
+            updateStockSummary();
+            // Garante que o input file limpe seu valor após a importação para permitir re-importar o mesmo arquivo
+            importFileInput.value = '';
         } catch (error) {
-            console.error("Erro ao ler ou parsear o arquivo JSON:", error);
-            showNotification("Erro ao importar o arquivo. Verifique se é um JSON válido.", "error");
-        } finally {
-            importFileInput.value = ''; // Limpa o input file para permitir nova seleção
+            console.error("Erro ao importar dados:", error);
+            showNotification('Erro ao processar o arquivo JSON. Verifique o formato.', 'error');
+            importFileInput.value = ''; // Limpa o input file em caso de erro
         }
     };
+    reader.onerror = () => {
+        showNotification('Erro ao ler o arquivo.', 'error');
+        importFileInput.value = ''; // Limpa o input file em caso de erro
+    };
     reader.readAsText(file);
-});
+}
 
 
-// --- Funcionalidades de Modais ---
+// --- Tema Escuro ---
 
 /**
- * Abre o modal de descrição com o texto completo.
- * @param {string} title - Título do item.
- * @param {string} description - Descrição completa do item.
+ * Alterna entre o modo claro e escuro.
  */
-function openDescriptionModal(title, description) {
-    descriptionModalTitle.textContent = title;
-    descriptionModalText.textContent = description || 'N/A';
-    descriptionModal.style.display = 'block';
-    descriptionModal.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('modal-open'); // Para prevenir scroll do body
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    localStorage.setItem('darkModeEnabled', isDarkMode);
+    // Atualiza o ícone do botão
+    darkModeToggle.innerHTML = isDarkMode ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    darkModeToggle.title = isDarkMode ? 'Alternar Modo Claro' : 'Alternar Modo Escuro';
 }
 
 /**
- * Fecha o modal de descrição.
+ * Carrega a preferência de modo escuro do LocalStorage.
  */
-function closeDescriptionModal() {
-    descriptionModal.style.display = 'none';
-    descriptionModal.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('modal-open');
-}
-
-// Fechar modal de descrição ao clicar fora ou no botão
-descriptionModal.addEventListener('click', (event) => {
-    if (event.target === descriptionModal) {
-        closeDescriptionModal();
-    }
-});
-
-/**
- * Exibe o modal de confirmação.
- * @param {string} message - A mensagem de confirmação.
- * @param {Function} callback - A função a ser executada se o usuário confirmar.
- * @param {string} [title='Confirmação'] - Título do modal.
- */
-function showConfirmationModal(message, callback, title = 'Confirmação') {
-    confirmationModalTitle.textContent = title;
-    confirmationModalText.innerHTML = message; // Usar innerHTML para permitir entidades HTML como &quot;
-    confirmationCallback = callback; // Armazena a função de callback
-    confirmationModal.style.display = 'block';
-    confirmationModal.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('modal-open');
-}
-
-/**
- * Fecha o modal de confirmação.
- */
-function closeConfirmationModal() {
-    confirmationModal.style.display = 'none';
-    confirmationModal.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('modal-open');
-    confirmationCallback = null; // Limpa o callback
-}
-
-// Listener para o botão de ação no modal de confirmação
-confirmActionButton.addEventListener('click', () => {
-    if (confirmationCallback) {
-        confirmationCallback(); // Executa a função de callback
-    }
-    // O modal é fechado pela função de callback ou uma ação específica após o callback
-    // closeConfirmationModal(); // Pode ser chamado aqui ou dentro do callback, dependendo do fluxo
-});
-
-// Fechar modal de confirmação ao clicar no "Não" ou fora
-confirmationModal.addEventListener('click', (event) => {
-    if (event.target === confirmationModal || event.target.classList.contains('btn-secondary')) {
-        closeConfirmationModal();
-    }
-});
-
-
-/**
- * Abre o modal de histórico de movimentação.
- * @param {string} itemId - O ID do item cujo histórico será exibido.
- */
-function showHistoryModal(itemId) {
-    const items = loadItems();
-    const item = items.find(i => i.id === itemId);
-
-    if (item) {
-        historyModal.dataset.itemId = itemId; // Armazena o ID do item no modal
-        historyModalTitle.textContent = `Histórico de Movimentação - ${item.name}`;
-        historyItemName.textContent = item.name; // Exibe o nome do item no formulário do modal
-        renderHistory(itemId); // Carrega e renderiza o histórico
-        historyModal.style.display = 'block';
-        historyModal.setAttribute('aria-hidden', 'false');
-        document.body.classList.add('modal-open');
+function loadDarkModePreference() {
+    const isDarkMode = localStorage.getItem('darkModeEnabled') === 'true';
+    if (isDarkMode) {
+        document.body.classList.add('dark-mode');
+        darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+        darkModeToggle.title = 'Alternar Modo Claro';
     } else {
-        showNotification("Item não encontrado para visualizar histórico.", "error");
+        document.body.classList.remove('dark-mode');
+        darkModeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+        darkModeToggle.title = 'Alternar Modo Escuro';
     }
 }
 
-/**
- * Fecha o modal de histórico.
- */
-function closeHistoryModal() {
-    historyModal.style.display = 'none';
-    historyModal.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('modal-open');
-    historyModal.removeAttribute('dataset.itemId'); // Limpa o ID do item
-    // Limpa os campos do formulário de movimento
-    movementTypeSelect.value = 'entry';
-    movementQuantityInput.value = '1';
+// --- Animações ---
+function applySaveAnimation() {
+    saveItemBtn.classList.add('saved');
+    saveItemBtn.innerHTML = '<i class="fas fa-check"></i> Salvo!';
+    setTimeout(() => {
+        if (!editingItemId) { // Só volta ao normal se não estiver em modo de edição
+            saveItemBtn.classList.remove('saved');
+            saveItemBtn.innerHTML = '<i class="fas fa-save"></i> Salvar Item';
+        }
+    }, 2000);
 }
 
-// Fechar modal de histórico ao clicar fora
-historyModal.addEventListener('click', (event) => {
-    if (event.target === historyModal) {
-        closeHistoryModal();
-    }
-});
 
-/**
- * Adiciona uma nova movimentação ao histórico do item.
- */
-addMovementBtn.addEventListener('click', () => {
-    const itemId = historyModal.dataset.itemId;
-    const type = movementTypeSelect.value;
-    const quantity = parseInt(movementQuantityInput.value);
+// --- Listeners de Eventos ---
+itemForm.addEventListener('submit', addItem);
+cancelEditBtn.addEventListener('click', clearForm); // Botão Cancelar Edição
 
-    if (!itemId) {
-        showNotification("Erro: Item ID não encontrado para adicionar movimento.", "error");
-        return;
-    }
-    if (isNaN(quantity) || quantity <= 0) {
-        showNotification("Por favor, insira uma quantidade válida maior que zero.", "warning");
-        movementQuantityInput.focus();
-        return;
-    }
-
-    let items = loadItems();
-    const itemIndex = items.findIndex(item => item.id === itemId);
-
-    if (itemIndex === -1) {
-        showNotification("Item não encontrado no estoque.", "error");
-        return;
-    }
-
-    const item = items[itemIndex];
-    let newQuantity = item.quantity;
-    let success = false;
-    let notificationMessage = "";
-
-    if (type === 'entry') {
-        newQuantity += quantity;
-        notificationMessage = `Entrada de ${quantity} unidades para "${item.name}" registrada.`;
-        success = true;
-    } else if (type === 'exit') {
-        if (newQuantity >= quantity) {
-            newQuantity -= quantity;
-            notificationMessage = `Saída de ${quantity} unidades para "${item.name}" registrada.`;
-            success = true;
-        } else {
-            showNotification(`Não há estoque suficiente (${item.quantity}) para registrar a saída de ${quantity} unidades de "${item.name}".`, "error");
-        }
-    }
-
-    if (success) {
-        item.quantity = newQuantity;
-        items[itemIndex] = item;
-        saveItems(items); // Salva os itens atualizados
-
-        // Adiciona ao histórico de movimentações
-        const history = loadMovementHistory(itemId);
-        history.push({
-            type: type,
-            quantity: quantity,
-            date: new Date().toISOString()
-        });
-        saveMovementHistory(itemId, history); // Salva o histórico
-
-        renderHistory(itemId); // Atualiza a tabela de histórico no modal
-        showNotification(notificationMessage, "success");
-        // Limpa o campo de quantidade após a adição bem-sucedida
-        movementQuantityInput.value = '1';
-    }
-});
-
-/**
- * Deleta um movimento específico do histórico de um item.
- * @param {string} itemId - O ID do item.
- * @param {number} movementIndex - O índice do movimento a ser deletado no array de histórico.
- */
-function deleteMovement(itemId, movementIndex) {
-    let history = loadMovementHistory(itemId);
-    if (movementIndex >= 0 && movementIndex < history.length) {
-        const deletedMovement = history[movementIndex];
-        history.splice(movementIndex, 1); // Remove o movimento do array
-        saveMovementHistory(itemId, history); // Salva o histórico atualizado
-
-        // Reverte a quantidade do item no estoque
-        let items = loadItems();
-        const itemIndex = items.findIndex(item => item.id === itemId);
-        if (itemIndex > -1) {
-            if (deletedMovement.type === 'entry') {
-                items[itemIndex].quantity -= deletedMovement.quantity;
-            } else if (deletedMovement.type === 'exit') {
-                items[itemIndex].quantity += deletedMovement.quantity;
-            }
-            saveItems(items); // Salva os itens com a quantidade revertida
-        }
-        renderHistory(itemId); // Re-renderiza o histórico
-        showNotification("Movimento excluído com sucesso!", "success");
+// Pré-visualização da imagem
+itemImageInput.addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewImage.src = e.target.result;
+            previewImage.classList.remove('hidden');
+            noImageText.classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
     } else {
-        showNotification("Erro: Movimento não encontrado.", "error");
+        previewImage.src = '';
+        previewImage.classList.add('hidden');
+        noImageText.classList.remove('hidden');
     }
-    closeConfirmationModal(); // Fecha o modal de confirmação
-}
+});
+
+// Listener para mostrar descrição completa ao clicar na célula
+itemListBody.addEventListener('click', (event) => {
+    const targetCell = event.target.closest('.description-cell');
+    if (targetCell) {
+        const itemId = targetCell.dataset.itemId;
+        showDescriptionModal(itemId);
+    }
+});
 
 
-// --- Paginação ---
-itemsPerPageSelect.addEventListener('change', (event) => {
-    itemsPerPage = parseInt(event.target.value);
-    currentPage = 1; // Reseta para a primeira página ao mudar itens por página
+// Busca de itens
+searchTermInput.addEventListener('input', () => {
+    currentPage = 1; // Reseta para a primeira página ao buscar
+    renderItems();
+    clearSearchBtn.style.display = searchTermInput.value.trim() !== '' ? 'block' : 'none'; // Mostra/esconde o botão de limpar
+});
+
+clearSearchBtn.addEventListener('click', () => {
+    searchTermInput.value = '';
+    clearSearchBtn.style.display = 'none';
+    currentPage = 1;
+    renderItems();
+});
+
+// Exportar/Importar
+exportDataBtn.addEventListener('click', exportData);
+importFileInput.addEventListener('change', importData);
+
+// Paginação
+itemsPerPageSelect.addEventListener('change', () => {
+    itemsPerPage = itemsPerPageSelect.value === 'all' ? 'all' : parseInt(itemsPerPageSelect.value);
+    currentPage = 1; // Volta para a primeira página ao mudar itens por página
     renderItems();
 });
 
@@ -880,82 +946,40 @@ prevPageBtn.addEventListener('click', () => {
 });
 
 nextPageBtn.addEventListener('click', () => {
-    const items = loadItems();
+    let items = loadItems();
+    // Re-aplica filtros para calcular totalPages corretamente para navegação
     const searchTerm = searchTermInput.value.toLowerCase().trim();
     let filteredItems = items.filter(item => {
         return item.name.toLowerCase().includes(searchTerm) ||
                (item.description && item.description.toLowerCase().includes(searchTerm)) ||
                (item.supplier && item.supplier.toLowerCase().includes(searchTerm));
     });
-
     if (showLowStockItemsBtn.classList.contains('active')) {
         const threshold = parseInt(lowStockThresholdInput.value) || 0;
         filteredItems = filteredItems.filter(item => item.quantity <= threshold);
     }
 
-    const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+    const totalPages = itemsPerPage === 'all' ? 1 : Math.ceil(filteredItems.length / itemsPerPage);
+
     if (currentPage < totalPages) {
         currentPage++;
         renderItems();
     }
 });
 
-
-// --- Ordenação da Tabela ---
-document.querySelectorAll('.sortable').forEach(header => {
-    header.addEventListener('click', () => {
-        const column = header.dataset.sort;
-        if (currentSortColumn === column) {
-            currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-            currentSortColumn = column;
-            currentSortDirection = 'asc'; // Padrão asc quando muda de coluna
-        }
-
-        // Remove ícones de todas as colunas
-        document.querySelectorAll('.sortable i').forEach(icon => icon.remove());
-
-        // Adiciona ícone à coluna atual
-        const icon = document.createElement('i');
-        icon.classList.add('fas', currentSortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
-        header.appendChild(icon);
-
-        renderItems();
-    });
-});
-
-
-// --- Modo Escuro ---
-
-/**
- * Carrega a preferência de modo escuro do LocalStorage.
- */
-function loadDarkModePreference() {
-    const isDarkMode = localStorage.getItem('darkMode') === 'true';
-    if (isDarkMode) {
-        document.body.classList.add('dark-mode');
-        darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>'; // Ícone de sol
+// Movimentação de estoque no modal de histórico
+addMovementBtn.addEventListener('click', () => {
+    const itemId = historyModalTitle.dataset.itemId;
+    if (itemId) {
+        addMovement(itemId);
     } else {
-        document.body.classList.remove('dark-mode');
-        darkModeToggle.innerHTML = '<i class="fas fa-moon"></i>'; // Ícone de lua
+        showNotification("Erro: ID do item não encontrado para adicionar movimento.", "error");
     }
-}
-
-/**
- * Alterna entre o modo claro e escuro.
- */
-function toggleDarkMode() {
-    document.body.classList.toggle('dark-mode');
-    const isDarkMode = document.body.classList.contains('dark-mode');
-    localStorage.setItem('darkMode', isDarkMode); // Salva a preferência
-    darkModeToggle.innerHTML = isDarkMode ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-}
-
-// Low Stock Threshold
-lowStockThresholdInput.addEventListener('change', () => {
-    updateStockSummary(); // Atualiza o resumo quando o limite muda
-    renderItems(); // Re-renderiza para aplicar a coloração de baixo estoque
 });
+
+// Atualiza o resumo do estoque quando o limite de baixo estoque é alterado
+lowStockThresholdInput.addEventListener('change', updateStockSummary);
+lowStockThresholdInput.addEventListener('input', updateStockSummary); // Para atualizar em tempo real ao digitar
 
 // Botão para filtrar/mostrar itens com baixo estoque
 showLowStockItemsBtn.addEventListener('click', () => {
@@ -987,5 +1011,66 @@ document.addEventListener('DOMContentLoaded', () => {
     importFileInput.value = '';
 
     // Inicializa o estado do botão de limpar busca
-    clearSearchBtn.style.display = searchTermInput.value.length > 0 ? 'inline-flex' : 'none';
+    clearSearchBtn.style.display = searchTermInput.value.trim() !== '' ? 'block' : 'none';
+
+    // Adiciona listener para as colunas de ordenação
+    document.querySelectorAll('.item-table th[data-sort]').forEach(header => {
+        header.addEventListener('click', () => {
+            const column = header.dataset.sort;
+            if (currentSortColumn === column) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = column;
+                currentSortDirection = 'asc';
+            }
+            // Remove ícones de ordenação de todos os cabeçalhos
+            document.querySelectorAll('.item-table th i.fas.fa-sort, .item-table th i.fas.fa-sort-up, .item-table th i.fas.fa-sort-down').forEach(icon => {
+                icon.remove();
+            });
+            // Adiciona o novo ícone de ordenação
+            const sortIcon = document.createElement('i');
+            sortIcon.classList.add('fas', currentSortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
+            header.appendChild(sortIcon);
+            renderItems();
+        });
+    });
+
+    // Função para adicionar o botão de limpar tudo no footer
+    function addClearAllDataButton() {
+        const footer = document.querySelector('.footer');
+        if (footer) {
+            const clearAllButton = document.createElement('button');
+            clearAllButton.id = 'clearAllDataBtn';
+            clearAllButton.classList.add('btn', 'btn-danger', 'btn-clear-all');
+            clearAllButton.innerHTML = '<i class="fas fa-eraser"></i> Limpar Tudo';
+            clearAllButton.title = 'Apagar todos os dados do estoque e histórico';
+            clearAllButton.addEventListener('click', clearAllData);
+            footer.appendChild(clearAllButton);
+        }
+    }
+    addClearAllDataButton();
 });
+
+
+/**
+ * Limpa todos os dados do LocalStorage relacionados ao estoque e histórico,
+ * e reinicia a visualização da página.
+ */
+function clearAllData() {
+    showConfirmationModal('Tem certeza que deseja APAGAR TODOS os dados do estoque e histórico? Esta ação é irreversível!', () => {
+        localStorage.removeItem('stockItems');
+        localStorage.removeItem('movementHistory');
+        localStorage.removeItem('lowStockThreshold'); // Também limpa o threshold
+        showNotification('Todos os dados foram apagados com sucesso!', 'success');
+        clearForm();
+        searchTermInput.value = ''; // Limpa o campo de busca
+        currentPage = 1; // Volta para a primeira página
+        itemsPerPageSelect.value = '10'; // Reseta para 10 itens por página
+        itemsPerPage = 10;
+        showLowStockItemsBtn.classList.remove('active'); // Desativa o filtro de baixo estoque
+        showLowStockItemsBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Ver Baixo Estoque';
+        renderItems();
+        updateStockSummary();
+        clearSearchBtn.style.display = 'none'; // Esconde o botão de limpar busca
+    }, 'Confirmar Limpeza Total', 'Limpar Tudo'); // Adiciona título e texto do botão de confirmação
+}

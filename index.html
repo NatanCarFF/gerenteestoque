@@ -22,52 +22,60 @@
         <div id="notification-container"></div>
 
         <section class="card item-form-section">
-            <h2><i class="fas fa-box"></i> Cadastrar/Editar Item</h2>
-            <form id="itemForm" class="item-form">
-                <div class="form-group">
-                    <label for="itemImage">Imagem do Item:</label>
-                    <input type="file" id="itemImage" accept="image/*">
-                    <div class="image-preview">
-                        <img id="previewImage" src="" alt="Pré-visualização da Imagem" class="hidden">
-                        <span id="noImageText">Nenhuma imagem selecionada</span>
+            <h2><i class="fas fa-plus-circle"></i> Adicionar/Editar Item</h2>
+            <form id="itemForm">
+                <div class="form-row">
+                    <div class="form-group image-upload-group">
+                        <label for="itemImage">Imagem do Item:</label>
+                        <div class="image-preview-container">
+                            <img id="previewImage" src="" alt="Pré-visualização da Imagem" class="hidden">
+                            <p id="noImageText">Nenhuma imagem selecionada</p>
+                        </div>
+                        <input type="file" id="itemImage" accept="image/*">
+                    </div>
+                    <div class="form-group flex-grow">
+                        <label for="itemName">Nome do Item: <span class="required">*</span></label>
+                        <input type="text" id="itemName" placeholder="Ex: Camiseta Básica" required>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="itemName">Nome do Item <span class="required">*</span>:</label>
-                    <input type="text" id="itemName" placeholder="Ex: Camiseta Básica P" required>
-                </div>
-                <div class="form-group">
                     <label for="itemDescription">Descrição:</label>
-                    <textarea id="itemDescription" placeholder="Detalhes do item..."></textarea>
+                    <textarea id="itemDescription" rows="3" placeholder="Ex: Camiseta 100% algodão, cor branca, tamanho M"></textarea>
                 </div>
-                <div class="form-group">
-                    <label for="itemQuantity">Quantidade <span class="required">*</span>:</label>
-                    <input type="number" id="itemQuantity" placeholder="Ex: 50" min="0" value="0" required>
-                </div>
-                <div class="form-group">
-                    <label for="itemPurchasePrice">Preço de Compra (R$) <span class="required">*</span>:</label>
-                    <input type="number" id="itemPurchasePrice" placeholder="Ex: 25.50" step="0.01" min="0" value="0" required>
-                </div>
-                <div class="form-group">
-                    <label for="itemSalePrice">Preço de Venda (R$) <span class="required">*</span>:</label>
-                    <input type="number" id="itemSalePrice" placeholder="Ex: 49.90" step="0.01" min="0" value="0" required>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="itemQuantity">Quantidade: <span class="required">*</span></label>
+                        <input type="number" id="itemQuantity" min="0" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemPurchasePrice">Preço de Compra (R$): <span class="required">*</span></label>
+                        <input type="number" id="itemPurchasePrice" step="0.01" min="0" value="0.00" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemSalePrice">Preço de Venda (R$): <span class="required">*</span></label>
+                        <input type="number" id="itemSalePrice" step="0.01" min="0" value="0.00" required>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="itemSupplier">Fornecedor:</label>
-                    <input type="text" id="itemSupplier" placeholder="Ex: Malharia ABC">
+                    <input type="text" id="itemSupplier" placeholder="Ex: ABC Têxtil">
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary" id="saveItemBtn"><i class="fas fa-save"></i> Salvar Item</button>
-                    <button type="button" class="btn btn-secondary" id="cancelEditBtn" style="display: none;"><i class="fas fa-times-circle"></i> Cancelar Edição</button>
+                    <button type="button" class="btn btn-secondary" id="cancelEditBtn" style="display: none;"><i class="fas fa-times"></i> Cancelar Edição</button>
                 </div>
             </form>
         </section>
 
         <section class="card stock-summary-section">
-            <h2><i class="fas fa-chart-pie"></i> Visão Geral do Estoque</h2>
+            <h2><i class="fas fa-chart-bar"></i> Visão Geral do Estoque</h2>
             <div class="summary-grid">
                 <div class="summary-item">
-                    <h3>Total de Itens</h3>
+                    <h3>Total de Itens Diferentes</h3>
+                    <p id="totalUniqueItemsCount">0</p>
+                </div>
+                <div class="summary-item">
+                    <h3>Total de Unidades em Estoque</h3>
                     <p id="totalItemsCount">0</p>
                 </div>
                 <div class="summary-item">
@@ -79,70 +87,49 @@
                     <p id="totalSaleValue">R$ 0,00</p>
                 </div>
                 <div class="summary-item">
-                    <h3>Potencial de Lucro</h3>
+                    <h3>Lucro Potencial Bruto</h3>
                     <p id="potentialProfit">R$ 0,00</p>
                 </div>
-                <div class="summary-item low-stock-threshold">
-                    <h3>Limite de Baixo Estoque</h3>
-                    <input type="number" id="lowStockThreshold" min="0" value="5">
-                </div>
-                <div class="summary-item low-stock-count">
+                <div class="summary-item low-stock-control">
                     <h3>Itens com Baixo Estoque</h3>
                     <p id="lowStockItemsCount">0</p>
-                    <button class="btn btn-warning btn-sm" id="showLowStockItemsBtn" title="Mostrar Itens com Baixo Estoque"><i class="fas fa-exclamation-circle"></i> Ver Baixo Estoque</button>
-                </div>
-            </div>
-        </section>
-
-        <section class="card tools-section">
-            <h2><i class="fas fa-tools"></i> Ferramentas</h2>
-            <div class="search-export-import">
-                <div class="form-group search-group">
-                    <label for="searchTerm">Buscar Item:</label>
-                    <div class="search-input-wrapper">
-                        <input type="text" id="searchTerm" placeholder="Nome, descrição ou fornecedor">
-                        <button id="clearSearchBtn" class="clear-search-btn" title="Limpar Busca" style="display: none;">&times;</button>
+                    <div class="form-group">
+                        <label for="lowStockThreshold">Limite de Baixo Estoque:</label>
+                        <input type="number" id="lowStockThreshold" min="0" value="5">
                     </div>
-                </div>
-                <div class="action-buttons">
-                    <button id="exportData" class="btn btn-info"><i class="fas fa-file-export"></i> Exportar Dados</button>
-                    <input type="file" id="importFile" class="hidden-input" accept=".json">
-                    <button onclick="document.getElementById('importFile').click()" class="btn btn-success"><i class="fas fa-file-import"></i> Importar Dados</button>
-                </div>
-            </div>
-            <div class="pagination-controls">
-                <div class="form-group">
-                    <label for="itemsPerPage">Itens por Página:</label>
-                    <select id="itemsPerPage">
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                        <option value="all">Todos</option>
-                    </select>
-                </div>
-                <div class="pagination-buttons">
-                    <button id="prevPageBtn" class="btn btn-secondary" disabled><i class="fas fa-chevron-left"></i> Anterior</button>
-                    <span id="currentPageInfo">Página 1 de 1</span>
-                    <button id="nextPageBtn" class="btn btn-secondary" disabled>Próxima <i class="fas fa-chevron-right"></i></button>
+                    <button id="showLowStockItemsBtn" class="btn btn-warning">
+                        <i class="fas fa-exclamation-circle"></i> Ver Baixo Estoque
+                    </button>
                 </div>
             </div>
         </section>
 
         <section class="card item-list-section">
             <h2><i class="fas fa-list"></i> Lista de Itens</h2>
-            <div class="item-list-container">
-                <table class="item-table">
+            <div class="toolbar">
+                <div class="search-bar">
+                    <input type="text" id="searchTerm" placeholder="Buscar por nome, descrição, fornecedor...">
+                    <button id="clearSearchBtn" class="btn btn-secondary clear-search-btn" style="display: none;"><i class="fas fa-times"></i> Limpar</button>
+                </div>
+                <div class="export-import">
+                    <button id="exportData" class="btn btn-info"><i class="fas fa-file-export"></i> Exportar Dados</button>
+                    <label for="importFile" class="btn btn-success"><i class="fas fa-file-import"></i> Importar Dados</label>
+                    <input type="file" id="importFile" accept=".json" style="display: none;">
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="item-table" id="itemTable">
                     <thead>
                         <tr>
                             <th>Imagem</th>
-                            <th data-sort="id">ID</th>
+                            <th>ID</th>
                             <th data-sort="name">Nome <i class="fas fa-sort"></i></th>
                             <th>Descrição</th>
-                            <th data-sort="quantity">Quantidade <i class="fas fa-sort"></i></th>
+                            <th data-sort="quantity">Qtd <i class="fas fa-sort"></i></th>
                             <th data-sort="purchasePrice">Preço Compra <i class="fas fa-sort"></i></th>
                             <th data-sort="salePrice">Preço Venda <i class="fas fa-sort"></i></th>
-                            <th data-sort="supplier">Fornecedor <i class="fas fa-sort"></i></th>
+                            <th>Fornecedor</th>
                             <th data-sort="registeredAt">Data Reg. <i class="fas fa-sort"></i></th>
                             <th>Ações</th>
                         </tr>
@@ -150,54 +137,66 @@
                     <tbody id="itemList">
                         </tbody>
                 </table>
-                <p id="noItemsMessage" class="no-items-message hidden"></p>
+                <p id="noItemsMessage" class="no-items-message hidden">Nenhum item cadastrado ainda. Comece adicionando um novo item!</p>
+            </div>
+
+            <div class="pagination-controls">
+                <div class="form-group">
+                    <label for="itemsPerPage">Itens por página:</label>
+                    <select id="itemsPerPage">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="all">Todos</option>
+                    </select>
+                </div>
+                <div class="pagination-buttons">
+                    <button id="prevPageBtn" class="btn btn-secondary"><i class="fas fa-chevron-left"></i> Anterior</button>
+                    <span id="currentPageInfo">Página 1 de 1</span>
+                    <button id="nextPageBtn" class="btn btn-secondary">Próxima <i class="fas fa-chevron-right"></i></button>
+                </div>
             </div>
         </section>
     </main>
 
     <footer class="footer">
-        <p>&copy; 2024 Sistema de Gestão de Estoque. Desenvolvido com <i class="fas fa-heart"></i>.</p>
+        <p>&copy; 2024 Sistema de Gestão de Estoque. Todos os direitos reservados.</p>
+        <div class="footer-buttons">
+            <button id="clearAllDataBtn" class="btn btn-danger btn-clear-all" title="Apagar todos os dados do estoque e histórico">
+                <i class="fas fa-eraser"></i> Limpar Tudo
+            </button>
+        </div>
     </footer>
 
-    <div id="descriptionModal" class="modal-overlay">
+    <div id="descriptionModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="descriptionModalTitle"></h3>
-                <button class="close-button" onclick="closeDescriptionModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p id="descriptionModalText"></p>
-            </div>
+            <span class="close-button" onclick="closeDescriptionModal()">&times;</span>
+            <h2 id="descriptionModalTitle">Descrição do Item</h2>
+            <p id="descriptionModalText"></p>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeDescriptionModal()">Fechar</button>
             </div>
         </div>
     </div>
 
-    <div id="confirmationModal" class="modal-overlay">
+    <div id="confirmationModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="confirmationModalTitle">Confirmação</h3>
-                <button class="close-button" onclick="cancelConfirmation()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p id="confirmationModalText"></p>
-            </div>
+            <span class="close-button" onclick="cancelConfirmation()">&times;</span>
+            <h2 id="confirmationModalTitle">Confirmação</h2>
+            <p id="confirmationModalText"></p>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="cancelConfirmation()">Cancelar</button>
-                <button id="confirmActionButton" class="btn btn-danger">Confirmar</button>
+                <button class="btn btn-danger" id="confirmActionButton">Confirmar</button>
             </div>
         </div>
     </div>
 
-    <div id="historyModal" class="modal-overlay">
-        <div class="modal-content history-modal-content">
-            <div class="modal-header">
-                <h3 id="historyModalTitle">Histórico de Movimentação - Item: <span id="historyItemName"></span></h3>
-                <button class="close-button" onclick="closeHistoryModal()">&times;</button>
-            </div>
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeHistoryModal()">&times;</span>
+            <h2 id="historyModalTitle">Histórico de Movimentação para: <span id="historyItemName"></span></h2>
             <div class="modal-body">
-                <div class="history-form">
+                <div class="movement-form">
                     <div class="form-group">
                         <label for="movementType">Tipo de Movimento:</label>
                         <select id="movementType">
@@ -233,7 +232,6 @@
             </div>
         </div>
     </div>
-
 
     <script src="script.js"></script>
 </body>
