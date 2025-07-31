@@ -298,12 +298,16 @@ body {
     white-space: nowrap; /* Impede que o texto quebre linhas, exceto onde explicitamente definido */
 }
 
-/* Quebra de texto para descrições longas na tabela */
+/* QUEBRA DE LINHA E TRUNCAMENTO PARA DESCRIÇÃO NA TABELA */
 .item-table .description-cell {
     white-space: normal; /* Permite que o texto quebre linhas */
     word-wrap: break-word; /* Garante a quebra de palavras longas */
     max-width: 250px; /* Opcional: define uma largura máxima para a coluna da descrição */
-    overflow-wrap: break-word; /* Para compatibilidade entre navegadores */
+    overflow: hidden; /* Esconde o texto que excede a caixa */
+    text-overflow: ellipsis; /* Adiciona "..." no final do texto truncado */
+    display: -webkit-box; /* Necessário para -webkit-line-clamp */
+    -webkit-line-clamp: 2; /* Limita o texto a 2 linhas */
+    -webkit-box-orient: vertical; /* Necessário para -webkit-line-clamp */
     cursor: pointer; /* Indica que é clicável */
     text-decoration: underline; /* Sugere clicabilidade */
     color: var(--primary-color); /* Destaca como link */

@@ -24,7 +24,7 @@ const notificationContainer = document.getElementById('notification-container');
 // Modais
 const descriptionModal = document.getElementById('descriptionModal');
 const descriptionModalText = document.getElementById('descriptionModalText');
-const descriptionModalTitle = document.getElementById('descriptionModalTitle'); // NOVO: Título do modal de descrição
+const descriptionModalTitle = document.getElementById('descriptionModalTitle'); // Título do modal de descrição
 
 const confirmationModal = document.getElementById('confirmationModal');
 const confirmationModalTitle = document.getElementById('confirmationModalTitle');
@@ -176,10 +176,12 @@ function renderItems() {
         const purchasePriceFormatted = parseFloat(item.purchasePrice).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const salePriceFormatted = parseFloat(item.salePrice).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+        // A descrição não é mais truncada aqui, mas sim pelo CSS.
+        // O valor completo é armazenado no `data-full-description` para o modal.
         row.innerHTML = `
             <td><img src="${item.image || 'assets/images/placeholder.png'}" alt="${item.name}" loading="lazy"></td>
             <td>${item.id.substring(0, 8)}...</td> <td>${item.name}</td>
-            <td class="description-cell" data-item-id="${item.id}">${item.description || 'N/A'}</td> <td>${item.quantity}</td>
+            <td class="description-cell" data-item-id="${item.id}" data-full-description="${item.description || ''}">${item.description || 'N/A'}</td> <td>${item.quantity}</td>
             <td>${purchasePriceFormatted}</td>
             <td>${salePriceFormatted}</td>
             <td>${item.supplier}</td>
@@ -433,7 +435,7 @@ function importData(event) {
 
     if (!file.name.endsWith('.json')) {
         showNotification('Por favor, selecione um arquivo JSON válido.', 'error');
-        importFileInput.value = '';
+        importFileInput.value = ''; // Limpa o input file para permitir nova seleção
         return;
     }
 
@@ -459,8 +461,9 @@ function importData(event) {
                  showNotification('O arquivo JSON contém itens com formato inválido. A importação pode não ser completa.', 'warning', 7000);
             }
 
+            // Usa o modal de confirmação para a importação
             showConfirmationModal(
-                'Deseja sobrescrever o estoque atual com os dados importados? Clique em "Confirmar" para sobrescrever, ou "Cancelar" para mesclar (adicionar novos itens e atualizar existentes).',
+                'Deseja sobrescrever o estoque atual com os dados importados? Clique em "Confirmar" para sobrescrever, ou "Mesclar" para adicionar novos itens e atualizar existentes. Clique em "Cancelar" para não fazer nada.',
                 () => { // Callback para Confirmar (sobrescrever)
                     saveItems(importedItems); // Sobrescreve
                     showNotification('Dados importados e estoque sobrescrito com sucesso!', 'success');
@@ -481,7 +484,10 @@ function importData(event) {
                     saveItems(currentItems);
                     showNotification('Dados importados e mesclados com sucesso!', 'success');
                     closeConfirmationModal();
-                }
+                },
+                'Sobrescrever', // Texto do botão "Confirmar"
+                'btn-danger',  // Classe do botão "Confirmar"
+                'Mesclar' // Texto para o botão "Cancelar" (que agora é mesclar)
             );
 
         } catch (error) {
@@ -521,14 +527,22 @@ function closeDescriptionModal() {
  * Mostra o modal de confirmação personalizado.
  * @param {string} message - A mensagem de confirmação.
  * @param {Function} onConfirm - Função a ser executada se o usuário confirmar.
- * @param {Function} [onCancel=null] - Função opcional a ser executada se o usuário cancelar.
+ * @param {Function} [onCancel=null] - Função opcional a ser executada se o usuário cancelar (clicar em "Cancelar" ou no overlay).
  * @param {string} [confirmBtnText='Confirmar'] - Texto para o botão de confirmação.
  * @param {string} [confirmBtnClass='btn-danger'] - Classe para o botão de confirmação.
+ * @param {string} [cancelBtnText='Cancelar'] - Texto para o botão de cancelar.
  */
-function showConfirmationModal(message, onConfirm, onCancel = null, confirmBtnText = 'Confirmar', confirmBtnClass = 'btn-danger') {
-    confirmationModalText.innerHTML = message; // Usar innerHTML para permitir negrito ou quebra de linha
+function showConfirmationModal(message, onConfirm, onCancel = null, confirmBtnText = 'Confirmar', confirmBtnClass = 'btn-danger', cancelBtnText = 'Cancelar') {
+    confirmationModalText.innerHTML = message;
     confirmActionButton.textContent = confirmBtnText;
     confirmActionButton.className = `btn ${confirmBtnClass}`; // Redefine a classe para o botão
+
+    // Atualiza o texto do botão de cancelar no modal
+    const currentCancelButton = confirmationModal.querySelector('.modal-footer .btn-secondary');
+    if (currentCancelButton) {
+        currentCancelButton.textContent = cancelBtnText;
+    }
+
 
     confirmationCallback = {
         confirm: onConfirm,
@@ -592,12 +606,12 @@ itemListBody.addEventListener('click', (event) => {
     // Verifica se o clique foi em uma célula de descrição
     if (target.classList.contains('description-cell')) {
         const itemId = target.dataset.itemId;
+        // Pega a descrição completa do dataset da célula
+        const fullDescription = target.dataset.fullDescription;
         const items = loadItems();
         const item = items.find(i => i.id === itemId);
-        if (item && item.description) {
-            showDescriptionModal(`Descrição de "${item.name}"`, item.description);
-        } else if (item) {
-            showDescriptionModal(`Descrição de "${item.name}"`, 'Este item não possui uma descrição detalhada.');
+        if (item) {
+            showDescriptionModal(`Descrição de "${item.name}"`, fullDescription || 'Este item não possui uma descrição detalhada.');
         }
     }
 });
@@ -617,7 +631,6 @@ confirmationModal.addEventListener('click', (event) => {
         cancelConfirmation(); // Trata o clique no overlay como cancelamento
     }
 });
-
 
 // --- Inicialização ---
 document.addEventListener('DOMContentLoaded', () => {
