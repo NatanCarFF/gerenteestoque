@@ -751,7 +751,7 @@ importFileInput.addEventListener('change', (event) => {
                 showNotification('Formato de arquivo JSON inválido ou dados de estoque ausentes.', 'error');
             }
         } catch (error) {
-            console.error("Erro ao importar arquivo:", error);
+            console.error("Erro ao processar arquivo:", error);
             showNotification('Erro ao processar arquivo. Certifique-se de que é um JSON válido.', 'error');
         }
     };
