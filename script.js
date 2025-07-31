@@ -21,7 +21,18 @@ const itemTable = document.getElementById('itemTable');
 const noItemsMessage = document.getElementById('noItemsMessage');
 const notificationContainer = document.getElementById('notification-container'); // Contêiner de notificações
 
+// Modais
+const descriptionModal = document.getElementById('descriptionModal');
+const descriptionModalText = document.getElementById('descriptionModalText');
+const descriptionModalTitle = document.getElementById('descriptionModalTitle'); // NOVO: Título do modal de descrição
+
+const confirmationModal = document.getElementById('confirmationModal');
+const confirmationModalTitle = document.getElementById('confirmationModalTitle');
+const confirmationModalText = document.getElementById('confirmationModalText');
+const confirmActionButton = document.getElementById('confirmActionButton');
+
 let editingItemId = null; // Variável para controlar se estamos editando um item existente
+let confirmationCallback = null; // Função de callback para o modal de confirmação
 
 // --- Funções Auxiliares ---
 
@@ -151,14 +162,11 @@ function renderItems() {
     toggleTableVisibility(); // Atualiza a visibilidade da tabela/mensagem
 
     if (filteredItems.length === 0 && searchTerm !== "") {
-        // Já tratado em toggleTableVisibility. Se quiser uma linha na tabela:
         itemListBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px;">Nenhum item encontrado para "${searchTerm}".</td></tr>`;
         return;
     } else if (filteredItems.length === 0 && searchTerm === "") {
-        // Já tratado em toggleTableVisibility. Não precisa de nada aqui.
         return;
     }
-
 
     filteredItems.forEach(item => {
         const row = itemListBody.insertRow();
@@ -171,15 +179,14 @@ function renderItems() {
         row.innerHTML = `
             <td><img src="${item.image || 'assets/images/placeholder.png'}" alt="${item.name}" loading="lazy"></td>
             <td>${item.id.substring(0, 8)}...</td> <td>${item.name}</td>
-            <td class="description-cell">${item.description}</td>
-            <td>${item.quantity}</td>
+            <td class="description-cell" data-item-id="${item.id}">${item.description || 'N/A'}</td> <td>${item.quantity}</td>
             <td>${purchasePriceFormatted}</td>
             <td>${salePriceFormatted}</td>
             <td>${item.supplier}</td>
             <td>${new Date(item.registeredAt).toLocaleDateString('pt-BR')}</td>
             <td>
                 <button class="btn btn-info btn-action" onclick="editItem('${item.id}')" title="Editar Item"><i class="fas fa-edit"></i></button>
-                <button class="btn btn-danger btn-action" onclick="deleteItem('${item.id}')" title="Excluir Item"><i class="fas fa-trash-alt"></i></button>
+                <button class="btn btn-danger btn-action" onclick="showConfirmationModal('Tem certeza que deseja excluir o item &quot;${item.name}&quot;?', () => deleteItemConfirmed('${item.id}'))" title="Excluir Item"><i class="fas fa-trash-alt"></i></button>
             </td>
         `;
     });
@@ -320,26 +327,25 @@ function editItem(id) {
 }
 
 /**
- * Exclui um item.
+ * Lógica para excluir um item após confirmação.
  * @param {string} id - O ID do item a ser excluído.
  */
-function deleteItem(id) {
-    if (confirm('Tem certeza que deseja excluir este item?')) {
-        let items = loadItems();
-        const initialLength = items.length;
-        items = items.filter(item => item.id !== id);
+function deleteItemConfirmed(id) {
+    let items = loadItems();
+    const initialLength = items.length;
+    items = items.filter(item => item.id !== id);
 
-        if (items.length < initialLength) { // Verifica se algum item foi realmente removido
-            saveItems(items);
-            showNotification('Item excluído com sucesso!', 'success');
-            // Se estiver editando o item que foi excluído, limpa o formulário
-            if (editingItemId === id) {
-                clearForm();
-            }
-        } else {
-            showNotification("Erro ao excluir item: Item não encontrado.", "error");
+    if (items.length < initialLength) { // Verifica se algum item foi realmente removido
+        saveItems(items);
+        showNotification('Item excluído com sucesso!', 'success');
+        // Se estiver editando o item que foi excluído, limpa o formulário
+        if (editingItemId === id) {
+            clearForm();
         }
+    } else {
+        showNotification("Erro ao excluir item: Item não encontrado.", "error");
     }
+    closeConfirmationModal(); // Fecha o modal após a ação
 }
 
 // --- Funções de Imagem ---
@@ -453,26 +459,30 @@ function importData(event) {
                  showNotification('O arquivo JSON contém itens com formato inválido. A importação pode não ser completa.', 'warning', 7000);
             }
 
-
-            if (confirm('Deseja sobrescrever o estoque atual com os dados importados? Clique em OK para sobrescrever, ou Cancelar para mesclar (adicionar novos itens e atualizar existentes).')) {
-                saveItems(importedItems); // Sobrescreve
-                showNotification('Dados importados e estoque sobrescrito com sucesso!', 'success');
-            } else {
-                // Mesclar: adicionar novos itens e atualizar existentes
-                let currentItems = loadItems();
-                importedItems.forEach(importedItem => {
-                    const existingIndex = currentItems.findIndex(item => item.id === importedItem.id);
-                    if (existingIndex > -1) {
-                        // Atualiza item existente
-                        currentItems[existingIndex] = { ...currentItems[existingIndex], ...importedItem };
-                    } else {
-                        // Adiciona novo item
-                        currentItems.push(importedItem);
-                    }
-                });
-                saveItems(currentItems);
-                showNotification('Dados importados e mesclados com sucesso!', 'success');
-            }
+            showConfirmationModal(
+                'Deseja sobrescrever o estoque atual com os dados importados? Clique em "Confirmar" para sobrescrever, ou "Cancelar" para mesclar (adicionar novos itens e atualizar existentes).',
+                () => { // Callback para Confirmar (sobrescrever)
+                    saveItems(importedItems); // Sobrescreve
+                    showNotification('Dados importados e estoque sobrescrito com sucesso!', 'success');
+                    closeConfirmationModal();
+                },
+                () => { // Callback para Cancelar (mesclar)
+                    let currentItems = loadItems();
+                    importedItems.forEach(importedItem => {
+                        const existingIndex = currentItems.findIndex(item => item.id === importedItem.id);
+                        if (existingIndex > -1) {
+                            // Atualiza item existente
+                            currentItems[existingIndex] = { ...currentItems[existingIndex], ...importedItem };
+                        } else {
+                            // Adiciona novo item
+                            currentItems.push(importedItem);
+                        }
+                    });
+                    saveItems(currentItems);
+                    showNotification('Dados importados e mesclados com sucesso!', 'success');
+                    closeConfirmationModal();
+                }
+            );
 
         } catch (error) {
             console.error("Erro ao importar dados:", error);
@@ -482,6 +492,77 @@ function importData(event) {
         }
     };
     reader.readAsText(file);
+}
+
+// --- Funções de Modal (Geral) ---
+
+/**
+ * Mostra o modal de descrição.
+ * @param {string} title - Título do modal.
+ * @param {string} description - Conteúdo da descrição.
+ */
+function showDescriptionModal(title, description) {
+    descriptionModalTitle.textContent = title;
+    descriptionModalText.textContent = description;
+    descriptionModal.classList.add('visible');
+}
+
+/**
+ * Fecha o modal de descrição.
+ */
+function closeDescriptionModal() {
+    descriptionModal.classList.remove('visible');
+    // Para acessibilidade e limpeza
+    descriptionModalTitle.textContent = '';
+    descriptionModalText.textContent = '';
+}
+
+/**
+ * Mostra o modal de confirmação personalizado.
+ * @param {string} message - A mensagem de confirmação.
+ * @param {Function} onConfirm - Função a ser executada se o usuário confirmar.
+ * @param {Function} [onCancel=null] - Função opcional a ser executada se o usuário cancelar.
+ * @param {string} [confirmBtnText='Confirmar'] - Texto para o botão de confirmação.
+ * @param {string} [confirmBtnClass='btn-danger'] - Classe para o botão de confirmação.
+ */
+function showConfirmationModal(message, onConfirm, onCancel = null, confirmBtnText = 'Confirmar', confirmBtnClass = 'btn-danger') {
+    confirmationModalText.innerHTML = message; // Usar innerHTML para permitir negrito ou quebra de linha
+    confirmActionButton.textContent = confirmBtnText;
+    confirmActionButton.className = `btn ${confirmBtnClass}`; // Redefine a classe para o botão
+
+    confirmationCallback = {
+        confirm: onConfirm,
+        cancel: onCancel
+    };
+
+    confirmationModal.classList.add('visible');
+}
+
+/**
+ * Fecha o modal de confirmação.
+ */
+function closeConfirmationModal() {
+    confirmationModal.classList.remove('visible');
+    confirmationCallback = null; // Limpa o callback
+}
+
+/**
+ * Função executada quando o botão "Confirmar" do modal de confirmação é clicado.
+ */
+function executeConfirmation() {
+    if (confirmationCallback && confirmationCallback.confirm) {
+        confirmationCallback.confirm();
+    }
+}
+
+/**
+ * Função executada quando o botão "Cancelar" ou "X" do modal de confirmação é clicado.
+ */
+function cancelConfirmation() {
+    if (confirmationCallback && confirmationCallback.cancel) {
+        confirmationCallback.cancel(); // Executa o callback de cancelamento, se existir
+    }
+    closeConfirmationModal();
 }
 
 
@@ -504,6 +585,39 @@ exportDataBtn.addEventListener('click', exportData);
 
 // Importar dados
 importFileInput.addEventListener('change', importData);
+
+// Adiciona um listener de evento de clique na tabela para o modal de descrição
+itemListBody.addEventListener('click', (event) => {
+    const target = event.target;
+    // Verifica se o clique foi em uma célula de descrição
+    if (target.classList.contains('description-cell')) {
+        const itemId = target.dataset.itemId;
+        const items = loadItems();
+        const item = items.find(i => i.id === itemId);
+        if (item && item.description) {
+            showDescriptionModal(`Descrição de "${item.name}"`, item.description);
+        } else if (item) {
+            showDescriptionModal(`Descrição de "${item.name}"`, 'Este item não possui uma descrição detalhada.');
+        }
+    }
+});
+
+// Listener para o botão de "Confirmar" do modal de confirmação
+confirmActionButton.addEventListener('click', executeConfirmation);
+
+// Permite fechar modais clicando fora (no overlay)
+descriptionModal.addEventListener('click', (event) => {
+    if (event.target === descriptionModal) {
+        closeDescriptionModal();
+    }
+});
+
+confirmationModal.addEventListener('click', (event) => {
+    if (event.target === confirmationModal) {
+        cancelConfirmation(); // Trata o clique no overlay como cancelamento
+    }
+});
+
 
 // --- Inicialização ---
 document.addEventListener('DOMContentLoaded', () => {

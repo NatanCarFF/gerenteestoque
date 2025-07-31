@@ -113,6 +113,34 @@
         <p>&copy; 2025 Sistema de Gestão de Estoque. Desenvolvido com <i class="fas fa-heart"></i> e JavaScript.</p>
     </footer>
 
+    <div id="descriptionModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="descriptionModalTitle">Descrição do Item</h3>
+                <button class="close-button" onclick="closeDescriptionModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="descriptionModalText"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmationModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="confirmationModalTitle">Confirmação</h3>
+                <button class="close-button" onclick="cancelConfirmation()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmationModalText"></p>
+            </div>
+            <div class="modal-footer">
+                <button id="confirmActionButton" class="btn btn-danger">Confirmar</button>
+                <button class="btn btn-secondary" onclick="cancelConfirmation()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
