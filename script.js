@@ -176,8 +176,7 @@ function renderItems() {
         const purchasePriceFormatted = parseFloat(item.purchasePrice).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const salePriceFormatted = parseFloat(item.salePrice).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        // A descrição não é mais truncada aqui, mas sim pelo CSS.
-        // O valor completo é armazenado no `data-full-description` para o modal.
+        // A descrição é truncada pelo CSS, mas o valor completo está no data-full-description
         row.innerHTML = `
             <td><img src="${item.image || 'assets/images/placeholder.png'}" alt="${item.name}" loading="lazy"></td>
             <td>${item.id.substring(0, 8)}...</td> <td>${item.name}</td>
@@ -461,33 +460,20 @@ function importData(event) {
                  showNotification('O arquivo JSON contém itens com formato inválido. A importação pode não ser completa.', 'warning', 7000);
             }
 
-            // Usa o modal de confirmação para a importação
+            // Usa o modal de confirmação para a importação: apenas sobrescrever ou cancelar
             showConfirmationModal(
-                'Deseja sobrescrever o estoque atual com os dados importados? Clique em "Confirmar" para sobrescrever, ou "Mesclar" para adicionar novos itens e atualizar existentes. Clique em "Cancelar" para não fazer nada.',
+                'Tem certeza que deseja **sobrescrever todo o estoque atual** com os dados do arquivo importado? Esta ação não pode ser desfeita.',
                 () => { // Callback para Confirmar (sobrescrever)
-                    saveItems(importedItems); // Sobrescreve
+                    saveItems(importedItems); // Sobrescreve todo o estoque
                     showNotification('Dados importados e estoque sobrescrito com sucesso!', 'success');
                     closeConfirmationModal();
                 },
-                () => { // Callback para Cancelar (mesclar)
-                    let currentItems = loadItems();
-                    importedItems.forEach(importedItem => {
-                        const existingIndex = currentItems.findIndex(item => item.id === importedItem.id);
-                        if (existingIndex > -1) {
-                            // Atualiza item existente
-                            currentItems[existingIndex] = { ...currentItems[existingIndex], ...importedItem };
-                        } else {
-                            // Adiciona novo item
-                            currentItems.push(importedItem);
-                        }
-                    });
-                    saveItems(currentItems);
-                    showNotification('Dados importados e mesclados com sucesso!', 'success');
-                    closeConfirmationModal();
+                () => { // Callback para Cancelar (apenas fecha o modal)
+                    showNotification('Importação de dados cancelada.', 'info');
+                    closeConfirmationModal(); // Fecha o modal sem fazer nada
                 },
                 'Sobrescrever', // Texto do botão "Confirmar"
-                'btn-danger',  // Classe do botão "Confirmar"
-                'Mesclar' // Texto para o botão "Cancelar" (que agora é mesclar)
+                'btn-danger'   // Classe do botão "Confirmar"
             );
 
         } catch (error) {
@@ -575,8 +561,9 @@ function executeConfirmation() {
 function cancelConfirmation() {
     if (confirmationCallback && confirmationCallback.cancel) {
         confirmationCallback.cancel(); // Executa o callback de cancelamento, se existir
+    } else {
+        closeConfirmationModal(); // Se não houver callback de cancelamento específico, apenas fecha o modal
     }
-    closeConfirmationModal();
 }
 
 
@@ -631,6 +618,7 @@ confirmationModal.addEventListener('click', (event) => {
         cancelConfirmation(); // Trata o clique no overlay como cancelamento
     }
 });
+
 
 // --- Inicialização ---
 document.addEventListener('DOMContentLoaded', () => {
