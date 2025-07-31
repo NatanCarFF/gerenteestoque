@@ -52,10 +52,24 @@ function saveItems(items) {
  */
 function toggleTableVisibility() {
     const items = loadItems();
-    if (items.length === 0) {
+    // Verifica se há itens após a filtragem para exibição
+    const searchTerm = searchTermInput.value.toLowerCase().trim();
+    const filteredItems = items.filter(item => {
+        return item.name.toLowerCase().includes(searchTerm) ||
+               item.description.toLowerCase().includes(searchTerm) ||
+               item.supplier.toLowerCase().includes(searchTerm);
+    });
+
+    if (filteredItems.length === 0 && searchTerm === "") { // Nenhum item e nenhuma busca ativa
         itemTable.classList.add('hidden');
         noItemsMessage.classList.remove('hidden');
-    } else {
+        noItemsMessage.textContent = 'Nenhum item cadastrado ainda. Comece adicionando um novo item!';
+    } else if (filteredItems.length === 0 && searchTerm !== "") { // Nenhuma busca encontrou resultados
+        itemTable.classList.add('hidden');
+        noItemsMessage.classList.remove('hidden');
+        noItemsMessage.textContent = `Nenhum item encontrado para "${searchTerm}".`;
+    }
+    else { // Itens encontrados (com ou sem busca)
         itemTable.classList.remove('hidden');
         noItemsMessage.classList.add('hidden');
     }
@@ -66,6 +80,7 @@ function toggleTableVisibility() {
  */
 function clearForm() {
     itemForm.reset(); // Reseta todos os campos do formulário
+    itemImageInput.value = ''; // Garante que o input file também seja limpo
     previewImage.src = '';
     previewImage.classList.add('hidden');
     noImageText.classList.remove('hidden');
@@ -79,23 +94,27 @@ function clearForm() {
  * Renderiza a lista de itens na tabela.
  * @param {Array} [itemsToRender=loadItems()] - Array de itens para renderizar. Se não for fornecido, carrega todos.
  */
-function renderItems(itemsToRender = loadItems()) {
+function renderItems() { // Não recebe mais itemsToRender diretamente, a função carrega e filtra internamente
     itemListBody.innerHTML = ''; // Limpa a tabela antes de renderizar
-    toggleTableVisibility();
+    const items = loadItems();
 
-    // Aplica o filtro de busca se houver um termo
+    // Aplica o filtro de busca
     const searchTerm = searchTermInput.value.toLowerCase().trim();
-    const filteredItems = itemsToRender.filter(item => {
+    const filteredItems = items.filter(item => {
         return item.name.toLowerCase().includes(searchTerm) ||
                item.description.toLowerCase().includes(searchTerm) ||
                item.supplier.toLowerCase().includes(searchTerm);
     });
 
+    toggleTableVisibility(); // Atualiza a visibilidade da tabela/mensagem
+
     if (filteredItems.length === 0 && searchTerm !== "") {
-        itemListBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px;">Nenhum item encontrado para "${searchTerm}".</td></tr>`;
+        // Já tratado em toggleTableVisibility, mas podemos adicionar um feedback aqui se necessário.
+        // Por exemplo, uma linha na tabela informando que nada foi encontrado.
+        // itemListBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px;">Nenhum item encontrado para "${searchTerm}".</td></tr>`;
         return;
     } else if (filteredItems.length === 0) {
-         // Se não há itens e não há termo de busca, a mensagem de "nenhum item" já estará visível pelo toggleTableVisibility
+        // Já tratado em toggleTableVisibility.
         return;
     }
 
@@ -111,8 +130,7 @@ function renderItems(itemsToRender = loadItems()) {
         row.innerHTML = `
             <td><img src="${item.image || 'assets/images/placeholder.png'}" alt="${item.name}" loading="lazy"></td>
             <td>${item.id.substring(0, 8)}...</td> <td>${item.name}</td>
-            <td>${item.description}</td>
-            <td>${item.quantity}</td>
+            <td class="description-cell">${item.description}</td> <td>${item.quantity}</td>
             <td>${purchasePriceFormatted}</td>
             <td>${salePriceFormatted}</td>
             <td>${item.supplier}</td>
@@ -137,6 +155,7 @@ async function addItem(event) {
     const imageFile = itemImageInput.files[0];
     let imageDataUrl = '';
 
+    // Se uma nova imagem foi selecionada
     if (imageFile) {
         // Converte a imagem para Base64
         imageDataUrl = await new Promise((resolve, reject) => {
@@ -149,9 +168,12 @@ async function addItem(event) {
             alert("Erro ao carregar a imagem. Tente novamente.");
             return '';
         });
-    } else if (previewImage.src && !previewImage.classList.contains('hidden')) {
-        // Se não selecionou nova imagem mas já existe uma pré-visualização (edicao), usa a existente
-        imageDataUrl = previewImage.src;
+    } else if (editingItemId) {
+        // Se estiver editando e nenhuma nova imagem foi selecionada, mantém a imagem existente
+        const existingItem = loadItems().find(item => item.id === editingItemId);
+        if (existingItem) {
+            imageDataUrl = existingItem.image || '';
+        }
     }
 
     const newItem = {
@@ -249,7 +271,7 @@ function handleImagePreview() {
         };
         reader.readAsDataURL(file);
     } else {
-        // Se nenhum arquivo selecionado, verifica se há imagem de item sendo editado
+        // Se nenhum arquivo selecionado, e não está editando ou o item em edição não tem imagem
         if (!editingItemId || !loadItems().find(item => item.id === editingItemId)?.image) {
              previewImage.src = '';
              previewImage.classList.add('hidden');
@@ -321,7 +343,7 @@ function importData(event) {
             }
 
             alert('Dados importados com sucesso!');
-            renderItems();
+            // A função saveItems já chama renderItems, então não precisamos chamar aqui novamente.
         } catch (error) {
             console.error("Erro ao importar dados:", error);
             alert('Erro ao importar o arquivo JSON. Certifique-se de que o arquivo está no formato correto. Detalhes: ' + error.message);
@@ -356,7 +378,7 @@ importFileInput.addEventListener('change', importData);
 // --- Inicialização ---
 document.addEventListener('DOMContentLoaded', () => {
     renderItems(); // Renderiza os itens existentes ao carregar a página
-    // Garante que o input file limpe seu valor ao carregar, evitando problemas de cache do navegador
+    // Garante que os inputs file limpem seus valores ao carregar, evitando problemas de cache do navegador
     itemImageInput.value = '';
     importFileInput.value = '';
 });

@@ -295,8 +295,17 @@ body {
     padding: 12px 15px;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
-    white-space: nowrap; /* Impede que o texto quebre linhas */
+    white-space: nowrap; /* Impede que o texto quebre linhas, exceto onde explicitamente definido */
 }
+
+/* Quebra de texto para descrições longas na tabela */
+.item-table .description-cell {
+    white-space: normal; /* Permite que o texto quebre linhas */
+    word-wrap: break-word; /* Garante a quebra de palavras longas */
+    max-width: 250px; /* Opcional: define uma largura máxima para a coluna da descrição */
+    overflow-wrap: break-word; /* Para compatibilidade entre navegadores */
+}
+
 
 .item-table th {
     background-color: var(--light-bg);
