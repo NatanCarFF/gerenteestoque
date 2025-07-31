@@ -918,41 +918,29 @@ function applySaveAnimation() {
 }
 
 /**
- * Alterna entre o modo claro e escuro.
+ * Função para alternar o modo escuro
  */
 function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
-    // Salva a preferência do usuário
-    const isDarkMode = document.body.classList.contains('dark-mode');
-    localStorage.setItem('darkMode', isDarkMode);
-
-    // Atualiza o ícone do toggle
-    const icon = darkModeToggle.querySelector('i');
-    if (isDarkMode) {
-        icon.classList.remove('fa-moon');
-        icon.classList.add('fa-sun');
+    // Salva a preferência do usuário no LocalStorage
+    if (document.body.classList.contains('dark-mode')) {
+        localStorage.setItem('darkMode', 'enabled');
+        darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>'; // Altera para ícone de sol
     } else {
-        icon.classList.remove('fa-sun');
-        icon.classList.add('fa-moon');
+        localStorage.setItem('darkMode', 'disabled');
+        darkModeToggle.innerHTML = '<i class="fas fa-moon"></i>'; // Altera para ícone de lua
     }
 }
 
 /**
- * Carrega a preferência de modo escuro do LocalStorage.
+ * Função para carregar a preferência de modo escuro ao iniciar
  */
 function loadDarkModePreference() {
-    const savedPreference = localStorage.getItem('darkMode');
-    if (savedPreference === 'true') {
+    if (localStorage.getItem('darkMode') === 'enabled') {
         document.body.classList.add('dark-mode');
-        // Atualiza o ícone ao carregar
-        const icon = darkModeToggle.querySelector('i');
-        icon.classList.remove('fa-moon');
-        icon.classList.add('fa-sun');
+        darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>'; // Garante que o ícone correto seja exibido
     } else {
-        document.body.classList.remove('dark-mode');
-        const icon = darkModeToggle.querySelector('i');
-        icon.classList.remove('fa-sun');
-        icon.classList.add('fa-moon');
+        darkModeToggle.innerHTML = '<i class="fas fa-moon"></i>'; // Garante que o ícone correto seja exibido
     }
 }
 
