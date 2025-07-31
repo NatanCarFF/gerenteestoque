@@ -1,0 +1,210 @@
+/* --- Responsividade --- */
+
+/* Telas menores que 768px (tablets e celulares) */
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 1.8em;
+        padding: 0 10px; /* Adiciona padding para o texto do cabeçalho */
+    }
+
+    .header .dark-mode-toggle {
+        margin-left: 10px; /* Ajusta a margem em telas pequenas */
+    }
+
+    .container {
+        padding: 0 15px;
+        margin-top: 15px;
+    }
+
+    .card {
+        padding: 20px;
+    }
+
+    .card h2 {
+        font-size: 1.5em;
+        text-align: center;
+        flex-direction: column; /* Ícone e texto um abaixo do outro */
+    }
+
+    .form-row {
+        flex-direction: column; /* Campos do formulário em coluna */
+        gap: 15px;
+    }
+
+    .form-group {
+        min-width: unset; /* Remove largura mínima para se adaptar */
+        width: 100%; /* Ocupa a largura total disponível */
+    }
+
+    .form-actions {
+        flex-direction: column; /* Botões um abaixo do outro */
+        gap: 10px;
+    }
+
+    .form-actions .btn {
+        width: 100%; /* Botões ocupam largura total */
+    }
+
+    .image-upload {
+        flex-basis: auto; /* Remove largura fixa */
+        width: 100%; /* Ocupa largura total */
+        margin-bottom: 15px;
+    }
+
+    .image-preview-container {
+        width: 150px;
+        height: 150px;
+    }
+
+    .stock-overview-section .summary-grid {
+        grid-template-columns: 1fr; /* Uma coluna em telas pequenas */
+    }
+
+    .low-stock-control {
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .low-stock-control .form-group {
+        width: 100%;
+        text-align: center;
+    }
+
+    .low-stock-control .summary-card,
+    #showLowStockItemsBtn {
+        width: 100%; /* Ocupa a largura total */
+        max-width: 300px; /* Limita a largura máxima */
+    }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .toolbar .search-bar {
+        width: 100%;
+        max-width: unset; /* Remove largura máxima */
+    }
+
+    .toolbar .import-export-buttons {
+        width: 100%;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .toolbar .import-export-buttons .btn {
+        width: 100%;
+        max-width: 300px; /* Limita a largura dos botões */
+    }
+
+    .pagination-controls {
+        flex-direction: column;
+        align-items: center;
+    }
+    .pagination-controls .form-group {
+        width: 100%;
+        justify-content: center;
+    }
+    .pagination-buttons {
+        width: 100%;
+        justify-content: center;
+    }
+
+
+    .item-table th,
+    .item-table td {
+        padding: 10px;
+        font-size: 0.9em;
+    }
+
+    .item-table td img {
+        width: 50px;
+        height: 50px;
+    }
+
+    .item-table td:last-child {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    /* Responsividade para notificações */
+    #notification-container {
+        top: calc(var(--header-height) + 10px);
+        right: 10px;
+        left: 10px; /* Ocupa a largura total em telas pequenas */
+        max-width: unset; /* Remove largura máxima */
+    }
+
+    /* Responsividade para modais */
+    .modal-content {
+        width: 95%; /* Ocupa mais largura em telas pequenas */
+        padding: 20px;
+    }
+
+    .modal-footer {
+        flex-direction: column; /* Botões um abaixo do outro */
+        gap: 10px;
+    }
+
+    .modal-footer .btn {
+        width: 100%;
+    }
+
+    .movement-form-section .form-row {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .movement-form-section .form-group {
+        width: 100%;
+        text-align: center;
+    }
+
+    #addMovementBtn {
+        width: 100%;
+        max-width: 250px;
+    }
+
+    .history-table-container {
+        max-height: 250px; /* Ajusta altura para telas menores */
+    }
+
+    .history-table th,
+    .history-table td {
+        padding: 8px 10px;
+        font-size: 0.85em;
+    }
+
+    .history-table td:last-child {
+        text-align: center;
+    }
+
+    .history-item-name {
+        font-size: 1.2em;
+    }
+}
+
+/* Telas muito pequenas (celulares) */
+@media (max-width: 480px) {
+    .header h1 {
+        font-size: 1.5em;
+    }
+
+    .header h1 .fas {
+        font-size: 1em;
+    }
+
+    .btn {
+        padding: 8px 15px;
+        font-size: 0.9em;
+    }
+
+    .summary-card p {
+        font-size: 1.8em;
+    }
+
+    .low-stock-control .summary-card p {
+        font-size: 1.5em;
+    }
+}

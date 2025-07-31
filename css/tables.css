@@ -1,0 +1,170 @@
+/* --- Tabela de Itens --- */
+.table-container {
+    overflow-x: auto; /* Permite rolagem horizontal em telas menores */
+    width: 100%;
+    margin-top: 20px;
+}
+
+.item-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 15px;
+    white-space: nowrap; /* Impede que o texto quebre linha em colunas */
+}
+
+.item-table th,
+.item-table td {
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    text-align: left;
+    vertical-align: middle;
+}
+
+.item-table th {
+    background-color: var(--light-bg);
+    color: var(--primary-color);
+    font-weight: 600;
+    cursor: pointer; /* Indica que a coluna é clicável para ordenação */
+    transition: background-color 0.2s ease;
+}
+
+.item-table th:hover {
+    background-color: var(--border-color);
+}
+
+/* Indicador de ordenação */
+.item-table th i.fas {
+    margin-left: 8px;
+    font-size: 0.8em;
+    color: var(--secondary-color);
+}
+
+.item-table tbody tr:nth-child(even) {
+    background-color: var(--light-bg);
+}
+
+.item-table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.item-table td {
+    color: var(--text-color);
+}
+
+.item-table td img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+}
+
+/* Coluna de Ações */
+.item-table td:last-child {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap; /* Permite que os botões quebrem linha */
+    justify-content: center; /* Centraliza os botões */
+    align-items: center;
+}
+
+/* Mensagem de "Nenhum item" */
+.no-items-message {
+    text-align: center;
+    color: var(--secondary-color);
+    font-style: italic;
+    padding: 20px;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    margin-top: 20px;
+    background-color: var(--card-bg);
+}
+
+/* --- Tabela de Histórico (dentro do Modal) --- */
+.history-table-container {
+    max-height: 300px; /* Altura máxima para rolagem do histórico */
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.history-table th,
+.history-table td {
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.history-table th {
+    background-color: var(--light-bg);
+    color: var(--primary-color);
+    font-weight: 600;
+    position: sticky; /* Fixa o cabeçalho ao rolar */
+    top: 0;
+    z-index: 1;
+}
+
+.history-table tbody tr:nth-child(even) {
+    background-color: var(--light-bg);
+}
+
+body.dark-mode .history-table th,
+body.dark-mode .history-table tbody tr:nth-child(even) {
+    background-color: #212529; /* Cor de fundo para dark mode */
+}
+
+.history-table td {
+    color: var(--text-color);
+}
+
+.history-table .success-icon {
+    color: var(--success-color);
+    margin-right: 5px;
+}
+
+.history-table .danger-icon {
+    color: var(--danger-color);
+    margin-right: 5px;
+}
+
+/* Formulário de Movimento dentro do Modal de Histórico */
+.movement-form-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.movement-form-section h3 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    font-size: 1.3em;
+}
+
+.movement-form-section .form-row {
+    margin-bottom: 0; /* Remove margem extra */
+    align-items: flex-end; /* Alinha o botão com os inputs */
+}
+
+.movement-form-section .form-group {
+    flex: none; /* Impede que os campos se estiquem */
+    width: auto; /* Largura automática */
+    min-width: unset; /* Remove min-width do form-group geral */
+}
+
+.movement-form-section .form-group label {
+    font-size: 0.9em;
+}
+
+.history-item-name {
+    text-align: center;
+    font-size: 1.5em;
+    color: var(--text-color);
+    margin-top: -10px;
+    margin-bottom: 20px;
+}

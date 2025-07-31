@@ -1,0 +1,224 @@
+/* Importação das fontes já está no HTML, mas aqui garantimos o uso */
+/* Fontes: 'Inter' para corpo de texto, 'Poppins' para títulos */
+:root {
+    /* Cores do Tema Claro */
+    --primary-color: #007bff; /* Azul vibrante */
+    --secondary-color: #6c757d; /* Cinza médio */
+    --success-color: #28a745; /* Verde */
+    --info-color: #17a2b8; /* Azul claro */
+    --warning-color: #ffc107; /* Amarelo */
+    --danger-color: #dc3545; /* Vermelho */
+    --light-bg: #f8f9fa; /* Fundo claro principal */
+    --dark-bg: #343a40; /* Fundo escuro para cabeçalho/rodapé */
+    --card-bg: #ffffff; /* Fundo dos cards */
+    --border-color: #e0e0e0; /* Cor da borda */
+    --text-color: #333; /* Cor do texto principal */
+    --header-height: 80px; /* Altura do cabeçalho */
+    --input-bg: #fff; /* Fundo de inputs */
+}
+
+/* Cores do Tema Escuro */
+body.dark-mode {
+    --primary-color: #79a7ff; /* Azul mais claro para dark mode */
+    --secondary-color: #adb5bd; /* Cinza claro */
+    --success-color: #4CAF50; /* Verde mais suave */
+    --info-color: #64B5F6; /* Azul claro mais suave */
+    --warning-color: #FFEB3B; /* Amarelo */
+    --danger-color: #EF5350; /* Vermelho mais suave */
+    --light-bg: #212529; /* Fundo escuro principal */
+    --dark-bg: #1a1d20; /* Fundo ainda mais escuro para cabeçalho/rodapé */
+    --card-bg: #2c3034; /* Fundo dos cards no dark mode */
+    --border-color: #444; /* Borda mais escura */
+    --text-color: #e0e0e0; /* Texto claro */
+    --input-bg: #343a40; /* Fundo de inputs no dark mode */
+}
+
+/* --- Estilos Globais e Reset --- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--light-bg);
+    color: var(--text-color);
+    line-height: 1.6;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+h1, h2, h3 {
+    font-family: 'Poppins', sans-serif;
+    color: var(--text-color);
+}
+
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+button {
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+}
+
+/* --- Container Principal --- */
+.container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 20px;
+    flex-grow: 1; /* Permite que o container cresça e empurre o footer para baixo */
+}
+
+/* --- Estilos de Notificação (Toast) --- */
+#notification-container {
+    position: fixed;
+    top: calc(var(--header-height) + 20px); /* Ajusta para ficar abaixo do cabeçalho */
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 350px; /* Largura máxima para as notificações */
+}
+
+.notification {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0; /* Começa invisível para a animação */
+    transform: translateX(100%); /* Começa fora da tela */
+    /* Removido transition aqui, pois a animação será controlada por keyframes */
+}
+
+.notification.success {
+    border-left: 5px solid var(--success-color);
+}
+
+.notification.error {
+    border-left: 5px solid var(--danger-color);
+}
+
+.notification.info {
+    border-left: 5px solid var(--info-color);
+}
+
+.notification.warning {
+    border-left: 5px solid var(--warning-color);
+}
+
+.notification .icon {
+    font-size: 1.2em;
+}
+
+.notification.success .icon { color: var(--success-color); }
+.notification.error .icon { color: var(--danger-color); }
+.notification.info .icon { color: var(--info-color); }
+.notification.warning .icon { color: var(--warning-color); }
+
+/* Animações Keyframe para Notificações */
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+/* --- Modais Básicos --- */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1001; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0, 0, 0, 0.6); /* Black w/ opacity */
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+}
+
+.modal-content {
+    background-color: var(--card-bg);
+    margin: auto;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 80%; /* Could be more specific based on content */
+    max-width: 600px;
+    position: relative;
+    /* Adicionado para transição de visibilidade */
+    opacity: 0;
+    transform: translateY(-50px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.modal-content.hidden {
+    opacity: 0;
+    transform: translateY(-50px);
+}
+
+/* O JavaScript vai remover 'hidden' e a transição vai acontecer */
+.modal[style*="display: flex"] .modal-content {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+.close-button {
+    color: var(--secondary-color);
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: var(--danger-color);
+    text-decoration: none;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
