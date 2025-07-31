@@ -282,7 +282,6 @@ function renderItems() {
 function updateStockSummary() {
     const items = loadItems();
     const lowStockThreshold = parseInt(lowStockThresholdInput.value) || 0;
-
     let totalItems = 0;
     let totalPurchase = 0;
     let totalSale = 0;
@@ -299,7 +298,6 @@ function updateStockSummary() {
 
     totalItemsCount.textContent = totalItems.toLocaleString('pt-BR');
     totalPurchaseValue.textContent = totalPurchase.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    totalSaleValue.textContent = totalSale.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     potentialProfit.textContent = (totalSale - totalPurchase).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     lowStockItemsCount.textContent = lowStockCount.toLocaleString('pt-BR');
 
@@ -314,7 +312,6 @@ function updateStockSummary() {
  */
 function updatePaginationControls(totalFilteredItems, totalPages) {
     const isAllItems = itemsPerPageSelect.value === 'all';
-
     if (isAllItems || totalPages === 0) {
         currentPageInfo.textContent = `Todos os ${totalFilteredItems} itens`;
         prevPageBtn.disabled = true;
@@ -325,7 +322,6 @@ function updatePaginationControls(totalFilteredItems, totalPages) {
         nextPageBtn.disabled = currentPage === totalPages;
     }
 }
-
 
 /**
  * Carrega o histórico de movimentações do LocalStorage para um item específico.
@@ -369,24 +365,19 @@ function renderHistory(itemId) {
 
     if (history.length === 0) {
         noHistoryMessage.classList.remove('hidden');
-        historyListBody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico de movimentação para este item.</td></tr>`;
+        historyListBody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Nenhum histórico para este item.</td></tr>`;
     } else {
         noHistoryMessage.classList.add('hidden');
-        // Ordena o histórico do mais recente para o mais antigo
-        history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-        history.forEach(mov => {
+        history.forEach((movement, index) => {
             const row = historyListBody.insertRow();
-            row.dataset.movementId = mov.id;
-            const typeIcon = mov.type === 'entrada' ? '<i class="fas fa-arrow-alt-circle-down" style="color: green;"></i> Entrada' : '<i class="fas fa-arrow-alt-circle-up" style="color: red;"></i> Saída';
-            const quantityText = mov.type === 'saida' ? `-${mov.quantity}` : `+${mov.quantity}`;
-
+            const dateFormatted = new Date(movement.date).toLocaleDateString('pt-BR') + ' ' +
+                                 new Date(movement.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
             row.innerHTML = `
-                <td>${typeIcon}</td>
-                <td>${quantityText}</td>
-                <td>${new Date(mov.date).toLocaleDateString('pt-BR')} ${new Date(mov.date).toLocaleTimeString('pt-BR')}</td>
+                <td>${movement.type === 'entry' ? 'Entrada' : 'Saída'}</td>
+                <td class="${movement.type === 'entry' ? 'text-success' : 'text-danger'}">${movement.quantity}</td>
+                <td>${dateFormatted}</td>
                 <td>
-                    <button class="btn btn-danger btn-action" onclick="showConfirmationModal('Tem certeza que deseja remover este movimento?', () => deleteMovementConfirmed('${itemId}', '${mov.id}'))" title="Remover Movimento"><i class="fas fa-times"></i></button>
+                    <button class="btn btn-danger btn-sm" onclick="showConfirmationModal('Tem certeza que deseja remover este movimento?', () => deleteMovement('${itemId}', ${index}))"><i class="fas fa-times-circle"></i></button>
                 </td>
             `;
         });
@@ -394,105 +385,105 @@ function renderHistory(itemId) {
 }
 
 
-// --- Funções de CRUD e Movimentação ---
+// --- Funções Principais de CRUD e Lógica de Negócio ---
 
 /**
- * Adiciona um novo item ou atualiza um item existente.
+ * Adiciona ou edita um item no estoque.
  * @param {Event} event - O evento de submit do formulário.
  */
-async function addItem(event) {
-    event.preventDefault();
+itemForm.addEventListener('submit', (event) => {
+    event.preventDefault(); // Impede o recarregamento da página
 
-    // --- Validação Básica ---
+    // Validação básica
     if (!itemNameInput.value.trim()) {
-        showNotification("O nome do item é obrigatório.", "error");
+        showNotification("Por favor, preencha o nome do item.", "warning");
         itemNameInput.focus();
         return;
     }
-    const quantity = parseInt(itemQuantityInput.value);
-    if (isNaN(quantity) || quantity < 0) {
-        showNotification("A quantidade deve ser um número válido e não negativo.", "error");
+    if (itemQuantityInput.value < 0) {
+        showNotification("A quantidade não pode ser negativa.", "warning");
         itemQuantityInput.focus();
         return;
     }
-    const purchasePrice = parseFloat(itemPurchasePriceInput.value);
-    if (isNaN(purchasePrice) || purchasePrice < 0) {
-        showNotification("O preço de compra deve ser um número válido e não negativo.", "error");
+    if (itemPurchasePriceInput.value < 0 || itemSalePriceInput.value < 0) {
+        showNotification("Os preços não podem ser negativos.", "warning");
         itemPurchasePriceInput.focus();
         return;
     }
-    const salePrice = parseFloat(itemSalePriceInput.value);
-    if (isNaN(salePrice) || salePrice < 0) {
-        showNotification("O preço de venda deve ser um número válido e não negativo.", "error");
-        itemSalePriceInput.focus();
-        return;
-    }
-    if (salePrice < purchasePrice) {
-        showNotification("O preço de venda não pode ser menor que o preço de compra.", "error");
+    if (parseFloat(itemSalePriceInput.value) < parseFloat(itemPurchasePriceInput.value)) {
+        showNotification("O preço de venda não pode ser menor que o preço de compra.", "warning");
         itemSalePriceInput.focus();
         return;
     }
 
+    const items = loadItems();
+    const isEditing = editingItemId !== null;
 
-    const imageFile = itemImageInput.files[0];
-    let imageDataUrl = '';
-
-    if (imageFile) {
-        const MAX_IMAGE_SIZE_MB = 1;
-        if (imageFile.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
-            showNotification(`A imagem é muito grande. Tamanho máximo permitido: ${MAX_IMAGE_SIZE_MB}MB.`, "error");
-            itemImageInput.value = '';
-            return;
-        }
-
-        try {
-            imageDataUrl = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = error => reject(error);
-                reader.readAsDataURL(imageFile);
-            });
-        } catch (error) {
-            console.error("Erro ao ler arquivo de imagem:", error);
-            showNotification("Não foi possível carregar a imagem. Tente outra.", "error");
-            return;
-        }
-    } else if (editingItemId) {
-        const existingItem = loadItems().find(item => item.id === editingItemId);
-        if (existingItem) {
-            imageDataUrl = existingItem.image || '';
-        }
+    // Verifica se o nome do item já existe (apenas para novos itens ou se o nome foi alterado durante a edição)
+    const existingItem = items.find(item => item.name.toLowerCase() === itemNameInput.value.trim().toLowerCase() && item.id !== editingItemId);
+    if (existingItem) {
+        showNotification("Já existe um item com este nome. Por favor, escolha um nome diferente.", "error");
+        itemNameInput.focus();
+        return;
     }
 
-    const newItem = {
-        id: editingItemId || Date.now().toString(36) + Math.random().toString(36).substr(2, 9),
-        name: itemNameInput.value.trim(),
-        description: itemDescriptionInput.value.trim(),
-        quantity: quantity,
-        purchasePrice: purchasePrice,
-        salePrice: salePrice,
-        supplier: itemSupplierInput.value.trim(),
-        image: imageDataUrl,
-        registeredAt: editingItemId ? loadItems().find(item => item.id === editingItemId).registeredAt : new Date().toISOString()
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+        const newItem = {
+            id: isEditing ? editingItemId : Date.now().toString(), // Usa o ID existente ou gera um novo
+            image: reader.result, // Base64 da imagem
+            name: itemNameInput.value.trim(),
+            description: itemDescriptionInput.value.trim(),
+            quantity: parseInt(itemQuantityInput.value),
+            purchasePrice: parseFloat(itemPurchasePriceInput.value).toFixed(2), // Garante 2 casas decimais
+            salePrice: parseFloat(itemSalePriceInput.value).toFixed(2),     // Garante 2 casas decimais
+            supplier: itemSupplierInput.value.trim(),
+            registeredAt: isEditing ? items.find(item => item.id === editingItemId).registeredAt : new Date().toISOString() // Mantém a data de registro original ou cria uma nova
+        };
+
+        if (isEditing) {
+            const itemIndex = items.findIndex(item => item.id === editingItemId);
+            if (itemIndex > -1) {
+                items[itemIndex] = newItem;
+                showNotification("Item atualizado com sucesso!", "success");
+            }
+        } else {
+            items.push(newItem);
+            showNotification("Item cadastrado com sucesso!", "success");
+        }
+
+        saveItems(items);
+        clearForm(); // Limpa o formulário após salvar
     };
 
-    let items = loadItems();
-
-    if (editingItemId) {
-        items = items.map(item => item.id === editingItemId ? { ...item, ...newItem } : item);
-        showNotification('Item atualizado com sucesso!', 'success');
+    if (itemImageInput.files.length > 0) {
+        reader.readAsDataURL(itemImageInput.files[0]);
     } else {
-        items.push(newItem);
-        showNotification('Item cadastrado com sucesso!', 'success');
+        // Se não houver imagem, usa a imagem existente se estiver editando, ou null para novo item
+        reader.onloadend(); // Chama onloadend diretamente para continuar o processo
     }
+});
 
-    saveItems(items);
-    clearForm();
-    applySaveAnimation(); // Aplica a animação de "salvo"
-}
+// Pré-visualização da imagem
+itemImageInput.addEventListener('change', (event) => {
+    if (event.target.files && event.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImage.src = e.target.result;
+            previewImage.classList.remove('hidden');
+            noImageText.classList.add('hidden');
+        };
+        reader.readAsDataURL(event.target.files[0]);
+    } else {
+        previewImage.src = '';
+        previewImage.classList.add('hidden');
+        noImageText.classList.remove('hidden');
+    }
+});
 
 /**
- * Preenche o formulário para edição de um item.
+ * Preenche o formulário com os dados do item para edição.
  * @param {string} id - O ID do item a ser editado.
  */
 function editItem(id) {
@@ -508,6 +499,7 @@ function editItem(id) {
         itemSalePriceInput.value = itemToEdit.salePrice;
         itemSupplierInput.value = itemToEdit.supplier;
 
+        // Exibir imagem de pré-visualização, se houver
         if (itemToEdit.image) {
             previewImage.src = itemToEdit.image;
             previewImage.classList.remove('hidden');
@@ -518,18 +510,19 @@ function editItem(id) {
             noImageText.classList.remove('hidden');
         }
 
-        saveItemBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Item';
-        saveItemBtn.classList.remove('btn-success', 'saved'); // Garante que não tenha estado de salvo
+        // Altera o texto e exibe o botão de cancelar
+        saveItemBtn.innerHTML = '<i class="fas fa-save"></i> Atualizar Item';
         cancelEditBtn.style.display = 'inline-flex';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        window.scrollTo({ top: 0, behavior: 'smooth' }); // Rola para o topo da página
     } else {
         showNotification("Item não encontrado para edição.", "error");
     }
 }
 
 /**
- * Lógica para excluir um item após confirmação.
- * @param {string} id - O ID do item a ser excluído.
+ * Deleta um item do estoque. Esta função é chamada após a confirmação.
+ * @param {string} id - O ID do item a ser deletado.
  */
 function deleteItemConfirmed(id) {
     let items = loadItems();
@@ -538,342 +531,203 @@ function deleteItemConfirmed(id) {
 
     if (items.length < initialLength) {
         saveItems(items);
-        // Também remove o histórico do item excluído
-        const allHistory = JSON.parse(localStorage.getItem('movementHistory')) || {};
+        // Remove o histórico de movimentação para o item excluído
+        let allHistory = JSON.parse(localStorage.getItem('movementHistory')) || {};
         delete allHistory[id];
         localStorage.setItem('movementHistory', JSON.stringify(allHistory));
 
-        showNotification('Item excluído com sucesso!', 'success');
-        if (editingItemId === id) {
-            clearForm();
-        }
+        showNotification("Item excluído com sucesso!", "success");
     } else {
-        showNotification("Erro ao excluir item: Item não encontrado.", "error");
+        showNotification("Erro ao excluir item. Item não encontrado.", "error");
     }
-    closeConfirmationModal();
+    closeConfirmationModal(); // Fecha o modal de confirmação
 }
 
 /**
- * Adiciona um movimento de entrada ou saída para um item.
+ * Cancela a edição de um item e limpa o formulário.
  */
-function addMovement() {
-    const itemId = historyModal.dataset.itemId;
-    if (!itemId) return;
+cancelEditBtn.addEventListener('click', clearForm);
 
-    let items = loadItems();
-    const item = items.find(i => i.id === itemId);
 
-    if (!item) {
-        showNotification("Item não encontrado para adicionar movimento.", "error");
-        return;
-    }
+// --- Funcionalidades de Busca e Limpeza ---
+searchTermInput.addEventListener('input', renderItems); // Renderiza ao digitar
+clearSearchBtn.addEventListener('click', () => {
+    searchTermInput.value = '';
+    clearSearchBtn.style.display = 'none'; // Esconde o botão novamente
+    renderItems();
+});
 
-    const type = movementTypeSelect.value;
-    const quantity = parseInt(movementQuantityInput.value);
-
-    if (isNaN(quantity) || quantity <= 0) {
-        showNotification("A quantidade do movimento deve ser um número positivo.", "error");
-        movementQuantityInput.focus();
-        return;
-    }
-
-    let newQuantity = item.quantity;
-    if (type === 'saida') {
-        if (quantity > item.quantity) {
-            showNotification(`Não há estoque suficiente. Quantidade atual: ${item.quantity}.`, "error");
-            movementQuantityInput.focus();
-            return;
-        }
-        newQuantity -= quantity;
-    } else { // entrada
-        newQuantity += quantity;
-    }
-
-    // Atualiza a quantidade do item
-    item.quantity = newQuantity;
-    saveItems(items); // Salva os itens atualizados
-
-    // Registra no histórico
-    const history = loadMovementHistory(itemId);
-    history.push({
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5), // ID único para o movimento
-        type: type,
-        quantity: quantity,
-        date: new Date().toISOString()
-    });
-    saveMovementHistory(itemId, history);
-
-    renderHistory(itemId); // Atualiza a tabela de histórico no modal
-    showNotification('Movimento adicionado e estoque atualizado!', 'success');
-    movementQuantityInput.value = '1'; // Reseta o campo de quantidade
-}
-
-/**
- * Exclui um movimento específico do histórico de um item.
- * @param {string} itemId - O ID do item.
- * @param {string} movementId - O ID do movimento a ser excluído.
- */
-function deleteMovementConfirmed(itemId, movementId) {
-    let items = loadItems();
-    const item = items.find(i => i.id === itemId);
-    if (!item) {
-        showNotification("Erro ao remover movimento: Item não encontrado.", "error");
-        closeConfirmationModal();
-        return;
-    }
-
-    let history = loadMovementHistory(itemId);
-    const movementToRemove = history.find(mov => mov.id === movementId);
-
-    if (!movementToRemove) {
-        showNotification("Erro ao remover movimento: Movimento não encontrado.", "error");
-        closeConfirmationModal();
-        return;
-    }
-
-    // Reverte a quantidade do estoque antes de remover o movimento
-    if (movementToRemove.type === 'entrada') {
-        item.quantity -= movementToRemove.quantity;
-    } else { // 'saida'
-        item.quantity += movementToRemove.quantity;
-    }
-
-    // Filtra para remover o movimento
-    history = history.filter(mov => mov.id !== movementId);
-
-    saveItems(items); // Salva o item com a quantidade revertida
-    saveMovementHistory(itemId, history); // Salva o histórico sem o movimento
-
-    renderHistory(itemId); // Re-renderiza o histórico no modal
-    showNotification('Movimento removido e estoque revertido!', 'success');
-    closeConfirmationModal();
-}
-
-// --- Funções de Imagem ---
-
-/**
- * Lida com a pré-visualização da imagem selecionada.
- */
-function handleImagePreview() {
-    const file = itemImageInput.files[0];
-    if (file) {
-        const MAX_IMAGE_SIZE_MB = 1;
-        if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
-            showNotification(`A imagem selecionada é muito grande para pré-visualização imediata. Tamanho máximo: ${MAX_IMAGE_SIZE_MB}MB.`, "warning", 5000);
-            previewImage.src = '';
-            previewImage.classList.add('hidden');
-            noImageText.classList.remove('hidden');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            previewImage.src = e.target.result;
-            previewImage.classList.remove('hidden');
-            noImageText.classList.add('hidden');
-        };
-        reader.onerror = (error) => {
-            console.error("Erro ao ler arquivo de imagem para pré-visualização:", error);
-            showNotification("Erro ao pré-visualizar imagem. Tente outro arquivo.", "error");
-            previewImage.src = '';
-            previewImage.classList.add('hidden');
-            noImageText.classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
+// Mostra/esconde o botão de limpar busca
+searchTermInput.addEventListener('keyup', () => {
+    if (searchTermInput.value.length > 0) {
+        clearSearchBtn.style.display = 'inline-flex';
     } else {
-        if (!editingItemId || !loadItems().find(item => item.id === editingItemId)?.image) {
-             previewImage.src = '';
-             previewImage.classList.add('hidden');
-             noImageText.classList.remove('hidden');
-        }
+        clearSearchBtn.style.display = 'none';
     }
-}
+});
 
-// --- Funções de Importação/Exportação ---
+
+// --- Funcionalidades de Importação e Exportação ---
 
 /**
  * Exporta os dados do estoque para um arquivo JSON.
  */
-function exportData() {
+exportDataBtn.addEventListener('click', () => {
     const items = loadItems();
     const history = JSON.parse(localStorage.getItem('movementHistory')) || {};
-
-    if (items.length === 0 && Object.keys(history).length === 0) {
-        showNotification("Não há dados (itens ou histórico) para exportar.", "info");
-        return;
-    }
-
-    // Combina itens e histórico em um único objeto para exportação
     const dataToExport = {
-        items: items,
-        movementHistory: history
+        stockItems: items,
+        movementHistory: history,
+        lowStockThreshold: localStorage.getItem('lowStockThreshold') || '0',
+        darkModePreference: localStorage.getItem('darkMode') || 'false'
     };
 
-    try {
-        const dataStr = JSON.stringify(dataToExport, null, 2);
-        const blob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `estoque_backup_${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        showNotification('Dados exportados com sucesso!', 'success');
-    } catch (error) {
-        console.error("Erro ao exportar dados:", error);
-        showNotification("Erro ao exportar dados. Tente novamente.", "error");
-    }
-}
+    const dataStr = JSON.stringify(dataToExport, null, 2); // Formata com 2 espaços
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'estoque_backup.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showNotification("Dados exportados com sucesso para 'estoque_backup.json'!", "success");
+});
 
 /**
  * Importa dados de um arquivo JSON.
- * @param {Event} event - O evento de mudança do input de arquivo.
  */
-function importData(event) {
+importFileInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (!file) {
         return;
     }
 
-    if (!file.name.endsWith('.json')) {
-        showNotification('Por favor, selecione um arquivo JSON válido.', 'error');
-        importFileInput.value = '';
+    if (file.type !== 'application/json') {
+        showNotification("Por favor, selecione um arquivo JSON válido.", "error");
         return;
     }
 
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = (e) => {
         try {
             const importedData = JSON.parse(e.target.result);
 
-            // Valida a estrutura esperada do arquivo importado
-            if (!importedData || !Array.isArray(importedData.items) || typeof importedData.movementHistory !== 'object') {
-                throw new Error('O arquivo JSON não contém a estrutura esperada (esperado um objeto com "items" e "movementHistory").');
+            if (importedData.stockItems && Array.isArray(importedData.stockItems)) {
+                // Pedir confirmação antes de sobrescrever
+                showConfirmationModal(
+                    'Importar dados irá substituir todos os itens e histórico existentes. Deseja continuar?',
+                    () => {
+                        localStorage.setItem('stockItems', JSON.stringify(importedData.stockItems));
+                        if (importedData.movementHistory) {
+                            localStorage.setItem('movementHistory', JSON.stringify(importedData.movementHistory));
+                        } else {
+                            localStorage.removeItem('movementHistory'); // Limpa se não houver histórico importado
+                        }
+                        if (importedData.lowStockThreshold) {
+                            localStorage.setItem('lowStockThreshold', importedData.lowStockThreshold);
+                        }
+                        if (importedData.darkModePreference) {
+                            localStorage.setItem('darkMode', importedData.darkModePreference);
+                            loadDarkModePreference(); // Aplica a preferência importada
+                        }
+
+                        renderItems();
+                        updateStockSummary();
+                        showNotification("Dados importados com sucesso!", "success");
+                        closeConfirmationModal();
+                    }
+                );
+            } else {
+                showNotification("O arquivo JSON não parece conter dados de estoque válidos.", "error");
             }
-
-            const importedItems = importedData.items;
-            const importedHistory = importedData.movementHistory;
-
-            // Opcional: validar estrutura básica dos itens importados
-            const isValidItemsImport = importedItems.every(item =>
-                typeof item.id === 'string' &&
-                typeof item.name === 'string' &&
-                typeof item.quantity === 'number' &&
-                typeof item.purchasePrice === 'number' &&
-                typeof item.salePrice === 'number'
-            );
-
-            if (!isValidItemsImport && importedItems.length > 0) {
-                 showNotification('O arquivo JSON contém itens com formato inválido. A importação pode não ser completa.', 'warning', 7000);
-            }
-
-            showConfirmationModal(
-                'Tem certeza que deseja **sobrescrever todo o estoque atual e histórico** com os dados do arquivo importado? Esta ação não pode ser desfeita.',
-                () => { // Callback para Confirmar (sobrescrever)
-                    saveItems(importedItems); // Sobrescreve todo o estoque
-                    localStorage.setItem('movementHistory', JSON.stringify(importedHistory)); // Sobrescreve todo o histórico
-                    showNotification('Dados importados e estoque sobrescrito com sucesso!', 'success');
-                    closeConfirmationModal();
-                },
-                () => { // Callback para Cancelar (apenas fecha o modal)
-                    showNotification('Importação de dados cancelada.', 'info');
-                    closeConfirmationModal();
-                },
-                'Sobrescrever',
-                'btn-danger'
-            );
-
         } catch (error) {
-            console.error("Erro ao importar dados:", error);
-            showNotification('Erro ao importar o arquivo JSON. Certifique-se de que o arquivo está no formato correto. Detalhes: ' + error.message, 'error');
+            console.error("Erro ao ler ou parsear o arquivo JSON:", error);
+            showNotification("Erro ao importar o arquivo. Verifique se é um JSON válido.", "error");
         } finally {
-            importFileInput.value = '';
+            importFileInput.value = ''; // Limpa o input file para permitir nova seleção
         }
     };
     reader.readAsText(file);
-}
+});
 
-// --- Funções de Modal (Geral) ---
+
+// --- Funcionalidades de Modais ---
 
 /**
- * Mostra o modal de descrição.
- * @param {string} title - Título do modal.
- * @param {string} description - Conteúdo da descrição.
+ * Abre o modal de descrição com o texto completo.
+ * @param {string} title - Título do item.
+ * @param {string} description - Descrição completa do item.
  */
-function showDescriptionModal(title, description) {
+function openDescriptionModal(title, description) {
     descriptionModalTitle.textContent = title;
-    descriptionModalText.textContent = description;
-    descriptionModal.classList.add('visible');
+    descriptionModalText.textContent = description || 'N/A';
+    descriptionModal.style.display = 'block';
+    descriptionModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open'); // Para prevenir scroll do body
 }
 
 /**
  * Fecha o modal de descrição.
  */
 function closeDescriptionModal() {
-    descriptionModal.classList.remove('visible');
-    descriptionModalTitle.textContent = '';
-    descriptionModalText.textContent = '';
+    descriptionModal.style.display = 'none';
+    descriptionModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
 }
 
-/**
- * Mostra o modal de confirmação personalizado.
- * @param {string} message - A mensagem de confirmação.
- * @param {Function} onConfirm - Função a ser executada se o usuário confirmar.
- * @param {Function} [onCancel=null] - Função opcional a ser executada se o usuário cancelar (clicar em "Cancelar" ou no overlay).
- * @param {string} [confirmBtnText='Confirmar'] - Texto para o botão de confirmação.
- * @param {string} [confirmBtnClass='btn-danger'] - Classe para o botão de confirmação.
- * @param {string} [cancelBtnText='Cancelar'] - Texto para o botão de cancelar.
- */
-function showConfirmationModal(message, onConfirm, onCancel = null, confirmBtnText = 'Confirmar', confirmBtnClass = 'btn-danger', cancelBtnText = 'Cancelar') {
-    confirmationModalText.innerHTML = message;
-    confirmActionButton.textContent = confirmBtnText;
-    confirmActionButton.className = `btn ${confirmBtnClass}`;
-
-    const currentCancelButton = confirmationModal.querySelector('.modal-footer .btn-secondary');
-    if (currentCancelButton) {
-        currentCancelButton.textContent = cancelBtnText;
+// Fechar modal de descrição ao clicar fora ou no botão
+descriptionModal.addEventListener('click', (event) => {
+    if (event.target === descriptionModal) {
+        closeDescriptionModal();
     }
+});
 
-    confirmationCallback = {
-        confirm: onConfirm,
-        cancel: onCancel
-    };
-
-    confirmationModal.classList.add('visible');
+/**
+ * Exibe o modal de confirmação.
+ * @param {string} message - A mensagem de confirmação.
+ * @param {Function} callback - A função a ser executada se o usuário confirmar.
+ * @param {string} [title='Confirmação'] - Título do modal.
+ */
+function showConfirmationModal(message, callback, title = 'Confirmação') {
+    confirmationModalTitle.textContent = title;
+    confirmationModalText.innerHTML = message; // Usar innerHTML para permitir entidades HTML como &quot;
+    confirmationCallback = callback; // Armazena a função de callback
+    confirmationModal.style.display = 'block';
+    confirmationModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
 }
 
 /**
  * Fecha o modal de confirmação.
  */
 function closeConfirmationModal() {
-    confirmationModal.classList.remove('visible');
-    confirmationCallback = null;
+    confirmationModal.style.display = 'none';
+    confirmationModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+    confirmationCallback = null; // Limpa o callback
 }
 
-/**
- * Função executada quando o botão "Confirmar" do modal de confirmação é clicado.
- */
-function executeConfirmation() {
-    if (confirmationCallback && confirmationCallback.confirm) {
-        confirmationCallback.confirm();
+// Listener para o botão de ação no modal de confirmação
+confirmActionButton.addEventListener('click', () => {
+    if (confirmationCallback) {
+        confirmationCallback(); // Executa a função de callback
     }
-}
+    // O modal é fechado pela função de callback ou uma ação específica após o callback
+    // closeConfirmationModal(); // Pode ser chamado aqui ou dentro do callback, dependendo do fluxo
+});
 
-/**
- * Função executada quando o botão "Cancelar" ou "X" do modal de confirmação é clicado.
- */
-function cancelConfirmation() {
-    if (confirmationCallback && confirmationCallback.cancel) {
-        confirmationCallback.cancel();
-    } else {
+// Fechar modal de confirmação ao clicar no "Não" ou fora
+confirmationModal.addEventListener('click', (event) => {
+    if (event.target === confirmationModal || event.target.classList.contains('btn-secondary')) {
         closeConfirmationModal();
     }
-}
+});
+
 
 /**
- * Mostra o modal de histórico de movimentação para um item.
+ * Abre o modal de histórico de movimentação.
  * @param {string} itemId - O ID do item cujo histórico será exibido.
  */
 function showHistoryModal(itemId) {
@@ -881,132 +735,140 @@ function showHistoryModal(itemId) {
     const item = items.find(i => i.id === itemId);
 
     if (item) {
-        historyModal.dataset.itemId = itemId; // Armazena o ID do item no dataset do modal
-        historyItemName.textContent = item.name;
-        renderHistory(itemId); // Renderiza o histórico específico do item
-        historyModal.classList.add('visible');
+        historyModal.dataset.itemId = itemId; // Armazena o ID do item no modal
+        historyModalTitle.textContent = `Histórico de Movimentação - ${item.name}`;
+        historyItemName.textContent = item.name; // Exibe o nome do item no formulário do modal
+        renderHistory(itemId); // Carrega e renderiza o histórico
+        historyModal.style.display = 'block';
+        historyModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
     } else {
-        showNotification("Item não encontrado para exibir histórico.", "error");
+        showNotification("Item não encontrado para visualizar histórico.", "error");
     }
 }
 
 /**
- * Fecha o modal de histórico de movimentação.
+ * Fecha o modal de histórico.
  */
 function closeHistoryModal() {
-    historyModal.classList.remove('visible');
-    historyModal.removeAttribute('data-item-id'); // Limpa o ID do item
-    historyItemName.textContent = '';
-    historyListBody.innerHTML = ''; // Limpa a lista do histórico
+    historyModal.style.display = 'none';
+    historyModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+    historyModal.removeAttribute('dataset.itemId'); // Limpa o ID do item
+    // Limpa os campos do formulário de movimento
+    movementTypeSelect.value = 'entry';
+    movementQuantityInput.value = '1';
 }
 
-
-// --- Funções de UI / Interatividade ---
-
-/**
- * Aplica uma animação visual ao botão de salvar/atualizar.
- */
-function applySaveAnimation() {
-    const originalText = saveItemBtn.innerHTML;
-    saveItemBtn.innerHTML = '<i class="fas fa-check"></i> Salvo!';
-    saveItemBtn.classList.add('btn-success', 'saved'); // Adiciona classe de sucesso e 'saved' para CSS
-
-    setTimeout(() => {
-        saveItemBtn.innerHTML = originalText;
-        saveItemBtn.classList.remove('btn-success', 'saved');
-    }, 2000); // Remove o feedback visual após 2 segundos
-}
-
-/**
- * Função para alternar o modo escuro
- */
-function toggleDarkMode() {
-    document.body.classList.toggle('dark-mode');
-    // Salva a preferência do usuário no LocalStorage
-    if (document.body.classList.contains('dark-mode')) {
-        localStorage.setItem('darkMode', 'enabled');
-        darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>'; // Altera para ícone de sol
-    } else {
-        localStorage.setItem('darkMode', 'disabled');
-        darkModeToggle.innerHTML = '<i class="fas fa-moon"></i>'; // Altera para ícone de lua
+// Fechar modal de histórico ao clicar fora
+historyModal.addEventListener('click', (event) => {
+    if (event.target === historyModal) {
+        closeHistoryModal();
     }
-}
-
-/**
- * Função para carregar a preferência de modo escuro ao iniciar
- */
-function loadDarkModePreference() {
-    if (localStorage.getItem('darkMode') === 'enabled') {
-        document.body.classList.add('dark-mode');
-        darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>'; // Garante que o ícone correto seja exibido
-    } else {
-        darkModeToggle.innerHTML = '<i class="fas fa-moon"></i>'; // Garante que o ícone correto seja exibido
-    }
-}
-
-/**
- * Limpa o campo de busca e re-renderiza os itens.
- */
-function clearSearch() {
-    searchTermInput.value = '';
-    clearSearchBtn.style.display = 'none'; // Esconde o botão novamente
-    renderItems();
-}
-
-// --- Event Listeners ---
-
-// Adiciona ou atualiza item ao submeter o formulário
-itemForm.addEventListener('submit', addItem);
-
-// Pré-visualização da imagem ao selecionar um arquivo
-itemImageInput.addEventListener('change', handleImagePreview);
-
-// Botão de cancelar edição
-cancelEditBtn.addEventListener('click', clearForm);
-
-// Busca em tempo real e exibe/esconde botão de limpar
-searchTermInput.addEventListener('input', () => {
-    renderItems();
-    clearSearchBtn.style.display = searchTermInput.value.trim() !== '' ? 'inline-flex' : 'none';
 });
 
-// Botão de limpar busca
-clearSearchBtn.addEventListener('click', clearSearch);
+/**
+ * Adiciona uma nova movimentação ao histórico do item.
+ */
+addMovementBtn.addEventListener('click', () => {
+    const itemId = historyModal.dataset.itemId;
+    const type = movementTypeSelect.value;
+    const quantity = parseInt(movementQuantityInput.value);
 
-// Exportar dados
-exportDataBtn.addEventListener('click', exportData);
+    if (!itemId) {
+        showNotification("Erro: Item ID não encontrado para adicionar movimento.", "error");
+        return;
+    }
+    if (isNaN(quantity) || quantity <= 0) {
+        showNotification("Por favor, insira uma quantidade válida maior que zero.", "warning");
+        movementQuantityInput.focus();
+        return;
+    }
 
-// Importar dados
-importFileInput.addEventListener('change', importData);
+    let items = loadItems();
+    const itemIndex = items.findIndex(item => item.id === itemId);
 
-// Lógica de Ordenação da Tabela
-itemTable.querySelectorAll('th[data-sort]').forEach(header => {
-    header.addEventListener('click', () => {
-        const column = header.dataset.sort;
-        if (currentSortColumn === column) {
-            currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+    if (itemIndex === -1) {
+        showNotification("Item não encontrado no estoque.", "error");
+        return;
+    }
+
+    const item = items[itemIndex];
+    let newQuantity = item.quantity;
+    let success = false;
+    let notificationMessage = "";
+
+    if (type === 'entry') {
+        newQuantity += quantity;
+        notificationMessage = `Entrada de ${quantity} unidades para "${item.name}" registrada.`;
+        success = true;
+    } else if (type === 'exit') {
+        if (newQuantity >= quantity) {
+            newQuantity -= quantity;
+            notificationMessage = `Saída de ${quantity} unidades para "${item.name}" registrada.`;
+            success = true;
         } else {
-            currentSortColumn = column;
-            currentSortDirection = 'asc';
+            showNotification(`Não há estoque suficiente (${item.quantity}) para registrar a saída de ${quantity} unidades de "${item.name}".`, "error");
         }
-        // Atualiza os ícones de ordenação
-        itemTable.querySelectorAll('th .fas.fa-sort, th .fas.fa-sort-up, th .fas.fa-sort-down').forEach(icon => {
-            icon.classList.remove('fa-sort-up', 'fa-sort-down');
-            icon.classList.add('fa-sort');
+    }
+
+    if (success) {
+        item.quantity = newQuantity;
+        items[itemIndex] = item;
+        saveItems(items); // Salva os itens atualizados
+
+        // Adiciona ao histórico de movimentações
+        const history = loadMovementHistory(itemId);
+        history.push({
+            type: type,
+            quantity: quantity,
+            date: new Date().toISOString()
         });
-        const currentIcon = header.querySelector('.fas');
-        if (currentIcon) {
-            currentIcon.classList.remove('fa-sort');
-            currentIcon.classList.add(currentSortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
-        }
-        renderItems();
-    });
+        saveMovementHistory(itemId, history); // Salva o histórico
+
+        renderHistory(itemId); // Atualiza a tabela de histórico no modal
+        showNotification(notificationMessage, "success");
+        // Limpa o campo de quantidade após a adição bem-sucedida
+        movementQuantityInput.value = '1';
+    }
 });
 
-// Lógica de Paginação
-itemsPerPageSelect.addEventListener('change', (e) => {
-    itemsPerPage = parseInt(e.target.value);
-    currentPage = 1; // Volta para a primeira página ao mudar a quantidade por página
+/**
+ * Deleta um movimento específico do histórico de um item.
+ * @param {string} itemId - O ID do item.
+ * @param {number} movementIndex - O índice do movimento a ser deletado no array de histórico.
+ */
+function deleteMovement(itemId, movementIndex) {
+    let history = loadMovementHistory(itemId);
+    if (movementIndex >= 0 && movementIndex < history.length) {
+        const deletedMovement = history[movementIndex];
+        history.splice(movementIndex, 1); // Remove o movimento do array
+        saveMovementHistory(itemId, history); // Salva o histórico atualizado
+
+        // Reverte a quantidade do item no estoque
+        let items = loadItems();
+        const itemIndex = items.findIndex(item => item.id === itemId);
+        if (itemIndex > -1) {
+            if (deletedMovement.type === 'entry') {
+                items[itemIndex].quantity -= deletedMovement.quantity;
+            } else if (deletedMovement.type === 'exit') {
+                items[itemIndex].quantity += deletedMovement.quantity;
+            }
+            saveItems(items); // Salva os itens com a quantidade revertida
+        }
+        renderHistory(itemId); // Re-renderiza o histórico
+        showNotification("Movimento excluído com sucesso!", "success");
+    } else {
+        showNotification("Erro: Movimento não encontrado.", "error");
+    }
+    closeConfirmationModal(); // Fecha o modal de confirmação
+}
+
+
+// --- Paginação ---
+itemsPerPageSelect.addEventListener('change', (event) => {
+    itemsPerPage = parseInt(event.target.value);
+    currentPage = 1; // Reseta para a primeira página ao mudar itens por página
     renderItems();
 });
 
@@ -1039,49 +901,60 @@ nextPageBtn.addEventListener('click', () => {
 });
 
 
-// Adiciona um listener de evento de clique na tabela para o modal de descrição
-itemListBody.addEventListener('click', (event) => {
-    const target = event.target;
-    if (target.classList.contains('description-cell')) {
-        const itemId = target.dataset.itemId;
-        const fullDescription = target.dataset.fullDescription;
-        const items = loadItems();
-        const item = items.find(i => i.id === itemId);
-        if (item) {
-            showDescriptionModal(`Descrição de "${item.name}"`, fullDescription || 'Este item não possui uma descrição detalhada.');
+// --- Ordenação da Tabela ---
+document.querySelectorAll('.sortable').forEach(header => {
+    header.addEventListener('click', () => {
+        const column = header.dataset.sort;
+        if (currentSortColumn === column) {
+            currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSortColumn = column;
+            currentSortDirection = 'asc'; // Padrão asc quando muda de coluna
         }
-    }
+
+        // Remove ícones de todas as colunas
+        document.querySelectorAll('.sortable i').forEach(icon => icon.remove());
+
+        // Adiciona ícone à coluna atual
+        const icon = document.createElement('i');
+        icon.classList.add('fas', currentSortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
+        header.appendChild(icon);
+
+        renderItems();
+    });
 });
 
-// Listener para o botão de "Confirmar" do modal de confirmação
-confirmActionButton.addEventListener('click', executeConfirmation);
 
-// Permite fechar modais clicando fora (no overlay)
-descriptionModal.addEventListener('click', (event) => {
-    if (event.target === descriptionModal) {
-        closeDescriptionModal();
+// --- Modo Escuro ---
+
+/**
+ * Carrega a preferência de modo escuro do LocalStorage.
+ */
+function loadDarkModePreference() {
+    const isDarkMode = localStorage.getItem('darkMode') === 'true';
+    if (isDarkMode) {
+        document.body.classList.add('dark-mode');
+        darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>'; // Ícone de sol
+    } else {
+        document.body.classList.remove('dark-mode');
+        darkModeToggle.innerHTML = '<i class="fas fa-moon"></i>'; // Ícone de lua
     }
-});
+}
 
-confirmationModal.addEventListener('click', (event) => {
-    if (event.target === confirmationModal) {
-        cancelConfirmation(); // Trata o clique no overlay como cancelamento
-    }
-});
+/**
+ * Alterna entre o modo claro e escuro.
+ */
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    localStorage.setItem('darkMode', isDarkMode); // Salva a preferência
+    darkModeToggle.innerHTML = isDarkMode ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+}
 
-historyModal.addEventListener('click', (event) => {
-    if (event.target === historyModal) {
-        closeHistoryModal();
-    }
-});
-
-// Lógica para adicionar movimento no modal de histórico
-addMovementBtn.addEventListener('click', addMovement);
-
-// Alterar limite de baixo estoque
+// Low Stock Threshold
 lowStockThresholdInput.addEventListener('change', () => {
-    updateStockSummary();
-    renderItems(); // Re-renderiza para aplicar destaque de baixo estoque
+    updateStockSummary(); // Atualiza o resumo quando o limite muda
+    renderItems(); // Re-renderiza para aplicar a coloração de baixo estoque
 });
 
 // Botão para filtrar/mostrar itens com baixo estoque
@@ -1114,5 +987,5 @@ document.addEventListener('DOMContentLoaded', () => {
     importFileInput.value = '';
 
     // Inicializa o estado do botão de limpar busca
-    clearSearchBtn.style.display = searchTermInput.value.trim() !== '' ? 'inline-flex' : 'none';
+    clearSearchBtn.style.display = searchTermInput.value.length > 0 ? 'inline-flex' : 'none';
 });
